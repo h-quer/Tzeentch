@@ -10,7 +10,7 @@
 ## What is Tzeentch?
 Tzeentch is a self-hosted book tracker. Query Google Books, Audible or Goodreads for metadata, log books you are reading, have read, plan to read, or plan to get.
 
-I built it because I was looking for a self-hosted Goodreads replacements without any social features. Just a simple tracker to show what I have read.
+I built it because I was looking for a self-hosted Goodreads replacements without any social features. Just a simple tool to track what I have read.
 
 There are some other self-hostable services already that do very similar things, but they mostly focus on books and don't deal well with audiobooks. I wanted to be able to integrate audiobooks just as prominently as books.
 
