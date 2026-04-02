@@ -45,14 +45,14 @@ services:
     volumes:
       - /your_tzeentch_dir/data:/app/data       # adjust path
     ports:
-      - 8428:3000                               # remove if using reverse proxy and accessing via container name
+      - 8421:3000                               # remove if using reverse proxy and accessing via container name
 ```
 Once it's set, simply pull and start the image:
 ```
 docker compose up -d
 ```
 
-Tzeentch should now be watching your specified port (8428 in the example above).
+Tzeentch should now be watching your specified port (8421 in the example above).
 
 ### Directories and the config file
 
