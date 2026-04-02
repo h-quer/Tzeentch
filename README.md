@@ -22,6 +22,8 @@ All data (except cover images) are kept in this CSV file. No database, no arbitr
 You should, of course, have a 3-2-1 backup strategy already and you should make sure that the bind mount with the CSV file is part of it.
 
 ## Screenshots
+Card view in light mode and list view in dark mode.
+
 <p align="center">
   <img src="/images/light.png" alt="reading_list_light" width="48%"/>
   <img src="/images/dark.png" alt="reading_list_dark" width="48%"/>
