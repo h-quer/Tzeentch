@@ -42,6 +42,8 @@ services:
     image: ghcr.io/h-quer/tzeentch:latest
     container_name: tzeentch
     restart: unless-stopped
+    environment:
+      - ABS_INTEGRATION=False                   # set to "True" if you want to enable syncing to Audiobookshelf
     volumes:
       - /your_tzeentch_dir/data:/app/data       # adjust path
     ports:
@@ -63,6 +65,12 @@ All data is stored in the data directory. Make sure that it exists and is readab
 Tzeentch does not offer logins or any kind of security measures. This should be fine if only using it locally or behind a VPN, but even then you might want to put it behind an auth provider. Something like Caddy basic auth is advisable, or a more full-featured solution like Authentik.
 If you want to expose this to the Internet, you should definitely put it behind a proper auth solution.
 Tzeentch does not and will not provide auth functionality, for the simple reason that I trust neither myself nor some AI to design a safe one. Leave it to the professionaly, use an existing and tested auth solution.
+
+## Audiobookshelf integration
+
+Set the ABS_INTEGRATION environment variable and a new sync button will appear in the top bar of the UI. It opens the option to sync with Audiobookshelf.
+Be aware that it will overwrite existing books with all metadata (including started/finished dates) from Audiobookshelf.
+Also be aware that **the API key will be stored in plain text** in the Tzeentch configuration file. If you don't know what that means or why that might be risky, better not use it. And be aware of the risk if you do use it. Most importantly, make sure that the config file is as secured as it can be and not publically accessible.
 
 ## Scope and roadmap
 ### Continuous support
