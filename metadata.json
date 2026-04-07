@@ -1,0 +1,5 @@
+{
+  "name": "Tzeentch",
+  "description": "A self-hosted reading tracker for books and audiobooks with Goodreads import and metadata search.",
+  "requestFramePermissions": []
+}

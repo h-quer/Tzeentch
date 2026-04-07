@@ -1,0 +1,10 @@
+services:
+  tzeentch:
+    build: .
+    container_name: tzeentch
+    restart: unless-stopped
+    ports:
+      - "8428:3000"
+    volumes:
+      - ./data:/app/data
+    
