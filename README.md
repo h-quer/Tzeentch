@@ -8,7 +8,7 @@
 ---
 
 ## What is Tzeentch?
-Tzeentch is a self-hosted book tracker. Query Google Books, Audible or Goodreads for metadata, log books you are reading, have read, plan to read, or plan to get.
+Tzeentch is a self-hosted book tracker. Query Google Books, Audible or Goodreads for metadata, sync with Audiobookshelf, log books you are reading, have read, plan to read, or plan to get.
 
 I built it because I was looking for a self-hosted Goodreads replacements without any social features. Just a simple tool to track what I have read.
 
@@ -69,8 +69,7 @@ Tzeentch does not and will not provide auth functionality, for the simple reason
 ## Audiobookshelf integration
 
 Set the ABS_INTEGRATION environment variable and a new sync button will appear in the top bar of the UI. It opens the option to sync with Audiobookshelf.
-Be aware that it will overwrite existing books with all metadata (including started/finished dates) from Audiobookshelf.
-Also be aware that **the API key will be stored in plain text** in the Tzeentch configuration file. If you don't know what that means or why that might be risky, better not use it. And be aware of the risk if you do use it. Most importantly, make sure that the config file is as secured as it can be and not publically accessible.
+Be aware that **the API key will be stored in plain text** in the Tzeentch configuration file. If you don't know what that means or why that might be risky, better not use it. And be aware of the risk if you do use it. Most importantly, make sure that the config file is as secured as it can be and not publically accessible.
 
 ## Scope and roadmap
 ### Continuous support
