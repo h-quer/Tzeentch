@@ -1,10 +1,12 @@
+---
 services:
   tzeentch:
-    build: .
+    image: ghcr.io/h-quer/tzeentch:latest
     container_name: tzeentch
     restart: unless-stopped
-    ports:
-      - "8428:3000"
+    environment:
+      - ABS_INTEGRATION=False                   # set to "True" if you want to enable syncing to Audiobookshelf
     volumes:
-      - ./data:/app/data
-    
+      - /your_tzeentch_dir/data:/app/data       # adjust path
+    ports:
+      - 8421:3000                               # remove if using reverse proxy and accessing via container name
