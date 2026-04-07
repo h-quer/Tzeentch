@@ -14,9 +14,7 @@ I built it because I was looking for a self-hosted Goodreads replacements withou
 
 There are some other self-hostable services already that do very similar things, but they mostly focus on books and don't deal well with audiobooks. I wanted to be able to integrate audiobooks just as prominently as books.
 
-## It's an early release and was designed primarily with AI, will it keep my data safe?
-Yes, absolutely!
-
+## Will it keep my data safe?
 I did primarily use the Gemini AI to create this. It is "just" a kind-of fancy UI on top of a CSV file, though.
 All data (except cover images) are kept in this CSV file. No database, no arbitrary abstraction, just plain text files.
 You should, of course, have a 3-2-1 backup strategy already and you should make sure that the bind mount with the CSV file is part of it.
