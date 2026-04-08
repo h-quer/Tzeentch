@@ -108,12 +108,21 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === 'text/csv') {
-      setFile(selectedFile);
-      setImportError(null);
-    } else {
-      setImportError('Please select a valid CSV file.');
-      setFile(null);
+    if (selectedFile) {
+      // Browsers often fail to detect CSV mime type correctly. 
+      // We check mime type, extension, and common Excel-related types.
+      const isCsv = selectedFile.type === 'text/csv' || 
+                    selectedFile.name.toLowerCase().endsWith('.csv') ||
+                    selectedFile.type === 'application/vnd.ms-excel' ||
+                    selectedFile.type === 'application/csv';
+      
+      if (isCsv) {
+        setFile(selectedFile);
+        setImportError(null);
+      } else {
+        setImportError('Please select a valid CSV file.');
+        setFile(null);
+      }
     }
   };
 
