@@ -164,8 +164,8 @@ function splitSeries(seriesStr?: string) {
 
 function parseGoodreadsTitle(title: string) {
   // Regex to match "Title (Series Name, #Number)" or "Title (Series Name #Number)" at the end of the string
-  // Using non-greedy match for series name to avoid capturing the trailing comma
-  const seriesRegex = /^(.*)\s\((.*?)(?:,\s|\s)#(\d+)\)$/;
+  // Handles decimal numbers and ranges (e.g., #1.5, #1-2)
+  const seriesRegex = /^(.*)\s\((.*?)(?:,\s|\s)#([\d\.-]+)\)$/;
   const match = title.match(seriesRegex);
   
   if (match) {
@@ -1213,10 +1213,11 @@ async function startServer() {
     const { format } = req.body;
 
     try {
-      const fileContent = fs.readFileSync(req.file.path, 'utf8');
+      // Read file and remove UTF-8 BOM if present
+      const fileContent = fs.readFileSync(req.file.path, 'utf8').replace(/^\uFEFF/, '');
       const results = Papa.parse(fileContent, {
         header: true,
-        skipEmptyLines: true
+        skipEmptyLines: 'greedy'
       });
       
       const books = results.data as any[];
