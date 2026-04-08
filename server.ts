@@ -919,6 +919,8 @@ async function startServer() {
     }
 
     const updates = { ...req.body };
+    const isManualSelection = updates.isManualSelection;
+    delete updates.isManualSelection;
 
     // Handle external cover URL update
     if (updates.cover_url && updates.cover_url.startsWith('http')) {
@@ -949,8 +951,10 @@ async function startServer() {
     updateBook(bookId, updates);
     const updatedBook = getBookById(bookId);
 
-    // Check if metadata_source was updated manually
-    if (req.body.metadata_source && oldBook && req.body.metadata_source !== oldBook.metadata_source) {
+    // Check if metadata_source was updated manually AND it's not a manual selection from a search
+    // If it's a manual selection (like from ManualRefreshModal), we don't want to trigger a refresh
+    // that might overwrite the user's manual selection.
+    if (req.body.metadata_source && oldBook && req.body.metadata_source !== oldBook.metadata_source && !isManualSelection) {
       const source = req.body.metadata_source.toLowerCase();
       const isSupported = source.includes('goodreads.com') || source.includes('audible.com') || source.includes('google.com');
       
