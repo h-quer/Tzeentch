@@ -910,14 +910,35 @@ async function startServer() {
                 delete updatedData[key];
               }
             }
+            // Special case: if we are filling in a finished_reading date, we MUST update status to 'Read'
+            if (updatedData.finished_reading) {
+              updatedData.status = 'Read';
+            } else if (updatedData.started_reading && existingBook.status === 'Backlog') {
+              // If we are filling in started_reading and it was in Backlog, move to Reading
+              updatedData.status = 'Reading';
+            }
           } else if (overwriteMode === 'dates-empty-only') {
+            // Only keep dates if they are empty in the existing book
             if (existingBook.started_reading) {
               delete updatedData.started_reading;
             }
             if (existingBook.finished_reading) {
               delete updatedData.finished_reading;
             }
-            if (existingBook.started_reading || existingBook.finished_reading) {
+            
+            // Remove all other metadata fields
+            const metadataFields: Array<keyof Book> = ['title', 'author', 'narrator', 'series', 'series_number', 'published_date', 'description', 'isbn', 'asin', 'publisher', 'tags', 'page_count', 'metadata_source', 'cover_url', 'format'];
+            for (const field of metadataFields) {
+              delete updatedData[field];
+            }
+
+            // Handle status update based on which dates were actually updated
+            if (updatedData.finished_reading) {
+              updatedData.status = 'Read';
+            } else if (updatedData.started_reading && !existingBook.finished_reading) {
+              updatedData.status = 'Reading';
+            } else {
+              // If no dates were updated, don't touch the status
               delete updatedData.status;
             }
           }
