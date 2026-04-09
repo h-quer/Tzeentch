@@ -738,19 +738,46 @@ async function startServer() {
         }
       }
 
+      // Fetch user progress list for more accurate activity tracking
+      let recentProgressItems: any[] = [];
+      try {
+        const progressListRes = await fetch(`${baseUrl}/api/me/progress`, {
+          headers: { 'Authorization': `Bearer ${absApiKey}` }
+        });
+        if (progressListRes.ok) {
+          const progressData = await progressListRes.json();
+          // ABS returns either an array or an object with a 'results' array depending on version/endpoint
+          recentProgressItems = Array.isArray(progressData) ? progressData : (progressData.results || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user progress list:', err);
+      }
+
       // Filter by date
       if (syncMode === 'from' && fromDate) {
         // Normalize fromDate to the start of the user's local day in UTC
+        // We use the date string directly to avoid timezone shifts from the server's local time
         const fromTimestamp = new Date(fromDate).getTime() + (offset * 60000);
         
-        allItems = allItems.filter(item => {
-          const toMs = (val: any) => {
-            if (!val) return 0;
-            if (typeof val === 'number') return val;
-            const t = new Date(val).getTime();
-            return isNaN(t) ? 0 : t;
-          };
+        const toMs = (val: any) => {
+          if (!val) return 0;
+          if (typeof val === 'number') return val;
+          const t = new Date(val).getTime();
+          return isNaN(t) ? 0 : t;
+        };
 
+        // Identify IDs of books with recent progress activity
+        const recentProgressIds = new Set(
+          recentProgressItems
+            .filter(p => {
+              const latestP = Math.max(toMs(p.updatedAt), toMs(p.startedAt), toMs(p.finishedAt));
+              return latestP >= fromTimestamp;
+            })
+            .map(p => p.libraryItemId)
+            .filter(Boolean)
+        );
+        
+        allItems = allItems.filter(item => {
           const progress = item.userProgress || item.progress || {};
           
           const timestamps = [
@@ -764,7 +791,7 @@ async function startServer() {
           ];
           
           const latestUpdate = Math.max(...timestamps);
-          return latestUpdate >= fromTimestamp;
+          return latestUpdate >= fromTimestamp || recentProgressIds.has(item.id);
         });
       }
 
