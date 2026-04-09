@@ -114,8 +114,8 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
     }
   };
 
-  const renderField = (field: string, isLast: boolean) => {
-    const marginClass = isLast ? 'mt-auto' : 'mb-2';
+  const renderField = (field: string, isFirst: boolean, isLast: boolean) => {
+    const marginClass = `${isFirst ? 'mt-auto' : ''} ${isLast ? '' : 'mb-2'}`;
     switch (field) {
       case 'title':
         return <h3 key={field} className={`font-bold text-lg leading-tight line-clamp-2 text-tzeentch-cyan group-hover:text-tzeentch-cyan transition-colors duration-500 ${marginClass}`}>{book.title}</h3>;
@@ -241,7 +241,7 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
 
       {/* Info */}
       <div className="p-4 border-t border-tzeentch-cyan/5 flex flex-col flex-1">
-        {fields.map((field, idx) => renderField(field, idx === fields.length - 1))}
+        {fields.map((field, idx) => renderField(field, idx === 0, idx === fields.length - 1))}
       </div>
 
       {/* Context Menu */}
