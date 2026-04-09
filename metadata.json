@@ -1,5 +1,5 @@
 {
   "name": "Tzeentch",
-  "description": "A self-hosted reading tracker for books and audiobooks with Goodreads import and metadata search.",
+  "description": "A self-hosted reading tracker for books and audiobooks with Goodreads import, Audiobookshelf sync, and metadata search.",
   "requestFramePermissions": []
 }
