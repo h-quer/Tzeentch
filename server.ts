@@ -721,7 +721,7 @@ async function startServer() {
       let allItems: any[] = [];
       for (const library of libraries) {
         if (library.mediaType === 'book') {
-          if (absLibrary && library.name.toLowerCase() !== absLibrary.toLowerCase()) {
+          if (absLibrary && (library.name || '').toString().toLowerCase() !== absLibrary.toLowerCase()) {
             continue;
           }
           
@@ -873,8 +873,8 @@ async function startServer() {
         }
 
         const existingBook = books.find(b => 
-          b.title.toLowerCase() === title.toLowerCase() && 
-          b.author.toLowerCase() === author.toLowerCase()
+          (b.title || '').toString().toLowerCase() === title.toLowerCase() && 
+          (b.author || '').toString().toLowerCase() === author.toLowerCase()
         );
 
         const bookData: Partial<Book> = {
