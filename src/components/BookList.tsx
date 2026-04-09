@@ -16,6 +16,8 @@ interface BookListProps {
   selectedBookIds?: number[];
   onToggleSelection?: (bookId: number) => void;
   viewPreferences?: Record<string, 'cards' | 'list' | 'disabled' | 'show-with-read'>;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
 }
 
 interface BookListRowProps {
@@ -407,12 +409,33 @@ const BookListRow: React.FC<BookListRowProps> = React.memo(({ book, onBookClick,
   );
 });
 
-export default function BookList({ books, onBookClick, onUpdate, columns, isMultiSelectMode, selectedBookIds, onToggleSelection, viewPreferences }: BookListProps) {
+export default function BookList({ books, onBookClick, onUpdate, columns, isMultiSelectMode, selectedBookIds, onToggleSelection, viewPreferences, onLoadMore, hasMore }: BookListProps) {
+  const observerTarget = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (!onLoadMore || !hasMore) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore]);
+
   return (
-    <div className="bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-x-auto">
+    <div className="bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto max-h-[calc(100vh-220px)] relative no-scrollbar">
       <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="border-b border-tzeentch-cyan/10 bg-tzeentch-card/50">
+        <thead className="sticky top-0 z-20 bg-tzeentch-card/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
+          <tr className="border-b border-tzeentch-cyan/10">
             {isMultiSelectMode && (
               <th className="px-4 py-3 w-10"></th>
             )}
@@ -443,6 +466,13 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
               viewPreferences={viewPreferences}
             />
           ))}
+          {hasMore && (
+            <tr ref={observerTarget}>
+              <td colSpan={columns.length + 2} className="h-20 text-center">
+                <div className="w-6 h-6 border-2 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin mx-auto"></div>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
