@@ -738,34 +738,35 @@ async function startServer() {
         }
       }
 
-      // Fetch user sessions for the most accurate activity tracking (especially for finished books)
-      let recentSessionIds = new Set<string>();
+      // Fetch user object to get mediaProgress for accurate state tracking (especially finished books)
+      let recentProgressIds = new Set<string>();
       if (syncMode === 'from' && fromDate) {
         try {
-          const sessionsRes = await fetch(`${baseUrl}/api/me/sessions`, {
+          const meRes = await fetch(`${baseUrl}/api/me`, {
             headers: { 'Authorization': `Bearer ${absApiKey}` }
           });
-          if (sessionsRes.ok) {
-            const sessionsData = await sessionsRes.json();
-            const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData.sessions || sessionsData.results || []);
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            const mediaProgress = meData.user?.mediaProgress || meData.mediaProgress || [];
             
             const fromTimestamp = new Date(fromDate).getTime() + (offset * 60000);
-            sessions.forEach((s: any) => {
+            mediaProgress.forEach((p: any) => {
               const toMs = (val: any) => {
                 if (!val) return 0;
-                if (typeof val === 'number') return val;
+                // If timestamp is in seconds (e.g. < 100 billion), convert to milliseconds
+                if (typeof val === 'number') return val < 100000000000 ? val * 1000 : val;
                 const t = new Date(val).getTime();
                 return isNaN(t) ? 0 : t;
               };
               
-              const sessionTime = Math.max(toMs(s.updatedAt), toMs(s.createdAt), toMs(s.startedAt), toMs(s.finishedAt));
-              if (sessionTime >= fromTimestamp && s.libraryItemId) {
-                recentSessionIds.add(s.libraryItemId);
+              const progressTime = Math.max(toMs(p.updatedAt), toMs(p.lastUpdate), toMs(p.startedAt), toMs(p.finishedAt));
+              if (progressTime >= fromTimestamp && p.libraryItemId) {
+                recentProgressIds.add(String(p.libraryItemId));
               }
             });
           }
         } catch (err) {
-          console.error('Failed to fetch user sessions:', err);
+          console.error('Failed to fetch user progress from /api/me:', err);
         }
       }
 
@@ -777,7 +778,7 @@ async function startServer() {
         
         const toMs = (val: any) => {
           if (!val) return 0;
-          if (typeof val === 'number') return val;
+          if (typeof val === 'number') return val < 100000000000 ? val * 1000 : val;
           const t = new Date(val).getTime();
           return isNaN(t) ? 0 : t;
         };
@@ -796,7 +797,7 @@ async function startServer() {
           ];
           
           const latestUpdate = Math.max(...timestamps);
-          return latestUpdate >= fromTimestamp || recentSessionIds.has(item.id);
+          return latestUpdate >= fromTimestamp || recentProgressIds.has(String(item.id));
         });
       }
 
