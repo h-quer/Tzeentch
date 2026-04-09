@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Book, BookStatus, UIConfig } from './types';
 import { BookOpen, Library, Bookmark, CheckCircle, Plus, Search, Settings, Info, BarChart2, RefreshCw, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -51,6 +51,9 @@ export default function App() {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isRefreshMetadataModalOpen, setIsRefreshMetadataModalOpen] = useState(false);
   const [isAbsSyncModalOpen, setIsAbsSyncModalOpen] = useState(false);
+  
+  const [visibleCount, setVisibleCount] = useState(50);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const fetchBooks = async () => {
     setLoading(true);
@@ -209,6 +212,38 @@ export default function App() {
       return searchTerms.every(term => searchableText.includes(term));
     });
   }, [sortedBooks, searchQuery]);
+
+  // Reset visible count when tab, view type, or search changes
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [activeTab, viewType, searchQuery]);
+
+  const visibleBooks = React.useMemo(() => {
+    return filteredBooks.slice(0, visibleCount);
+  }, [filteredBooks, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => Math.min(prev + 50, filteredBooks.length));
+  };
+
+  useEffect(() => {
+    if (viewType !== 'cards') return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredBooks.length) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [viewType, visibleCount, filteredBooks.length]);
 
   const handleToggleSelection = (id: number) => {
     setSelectedBookIds(prev => 
@@ -375,24 +410,31 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
               >
                 {viewType === 'cards' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                    {filteredBooks.map((book) => (
-                      <BookCard 
-                        key={book.id} 
-                        book={book} 
-                        onUpdate={handleBookUpdate} 
-                        onClick={() => setSelectedBook(book)} 
-                        fields={(uiConfig?.cardFields || []).filter(f => f !== 'series_number')} 
-                        isMultiSelectMode={isMultiSelectMode}
-                        isSelected={selectedBookIds.includes(book.id)}
-                        onToggleSelection={() => handleToggleSelection(book.id)}
-                        viewPreferences={uiConfig?.viewPreferences}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                      {visibleBooks.map((book) => (
+                        <BookCard 
+                          key={book.id} 
+                          book={book} 
+                          onUpdate={handleBookUpdate} 
+                          onClick={() => setSelectedBook(book)} 
+                          fields={(uiConfig?.cardFields || []).filter(f => f !== 'series_number')} 
+                          isMultiSelectMode={isMultiSelectMode}
+                          isSelected={selectedBookIds.includes(book.id)}
+                          onToggleSelection={() => handleToggleSelection(book.id)}
+                          viewPreferences={uiConfig?.viewPreferences}
+                        />
+                      ))}
+                    </div>
+                    {visibleCount < filteredBooks.length && (
+                      <div ref={observerTarget} className="h-20 flex items-center justify-center mt-8">
+                        <div className="w-6 h-6 border-2 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <BookList 
-                    books={filteredBooks} 
+                    books={visibleBooks} 
                     onBookClick={(book) => setSelectedBook(book)} 
                     onUpdate={handleBookUpdate}
                     columns={(uiConfig?.listColumns || []).filter(c => c !== 'series_number')} 
@@ -400,6 +442,8 @@ export default function App() {
                     selectedBookIds={selectedBookIds}
                     onToggleSelection={handleToggleSelection}
                     viewPreferences={uiConfig?.viewPreferences}
+                    onLoadMore={handleLoadMore}
+                    hasMore={visibleCount < filteredBooks.length}
                   />
                 )}
               </motion.div>
