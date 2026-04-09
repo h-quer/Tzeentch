@@ -747,7 +747,7 @@ async function startServer() {
           });
           if (sessionsRes.ok) {
             const sessionsData = await sessionsRes.json();
-            const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData.results || []);
+            const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData.sessions || sessionsData.results || []);
             
             const fromTimestamp = new Date(fromDate).getTime() + (offset * 60000);
             sessions.forEach((s: any) => {
