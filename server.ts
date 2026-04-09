@@ -195,6 +195,56 @@ function stripHtml(html?: string): string | null {
   return text.trim() || null;
 }
 
+async function fetchGoodreadsDetails(bookUrl: string) {
+  if (!bookUrl) return null;
+  const fullUrl = bookUrl.startsWith('http') ? bookUrl : `https://www.goodreads.com${bookUrl}`;
+  
+  try {
+    const res = await fetch(fullUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+      }
+    });
+    if (!res.ok) return null;
+    
+    const html = await res.text();
+    const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/);
+    if (match) {
+      const data = JSON.parse(match[1]);
+      const apollo = data.props.pageProps.apolloState;
+      for (const key in apollo) {
+        if (key.startsWith('Book:')) {
+          const bookData = apollo[key];
+          const details = bookData.details;
+          if (details) {
+            let publishedDate = null;
+            if (details.publicationTime) {
+              publishedDate = new Date(details.publicationTime).toISOString().split('T')[0];
+            }
+            
+            const categories = bookData.bookGenres 
+              ? bookData.bookGenres.map((g: any) => g.genre.name).join(', ') 
+              : null;
+
+            return {
+              isbn: details.isbn13 || details.isbn || null,
+              asin: details.asin || null,
+              pageCount: details.numPages || null,
+              publisher: details.publisher || null,
+              publishedDate,
+              description: stripHtml(bookData.description) || null,
+              categories
+            };
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch Goodreads details:', e);
+  }
+  return null;
+}
+
 function getSurname(author: string): string {
   const parts = author.trim().split(/\s+/);
   if (parts.length > 1) {
@@ -494,7 +544,23 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
           series: parsedSeries || (item.seriesName ? splitSeries(item.seriesName).series : null),
           series_number: parsedSeriesNumber || (item.seriesName ? splitSeries(item.seriesName).series_number : null),
           tags: null,
+          page_count: item.numPages || null
         };
+
+        // Fetch extra details from the book page
+        const details = await fetchGoodreadsDetails(item.bookUrl);
+        if (details) {
+          metadata = {
+            ...metadata,
+            isbn: details.isbn || null,
+            asin: details.asin || null,
+            page_count: details.pageCount || metadata.page_count,
+            publisher: details.publisher || null,
+            published_date: details.publishedDate || null,
+            description: details.description || metadata.description,
+            tags: details.categories || null
+          };
+        }
       }
     }
 
@@ -1175,7 +1241,7 @@ async function startServer() {
         });
         const data = await response.json();
         
-        results = data.map((item: any) => {
+        const rawResults = data.map((item: any) => {
           let coverUrl = item.imageUrl;
           if (coverUrl) {
             // Try to get larger image
@@ -1194,9 +1260,34 @@ async function startServer() {
             asin: null,
             categories: null,
             series: parsedSeries || (item.seriesName ? splitSeries(item.seriesName).series : null),
-            series_number: parsedSeriesNumber || (item.seriesName ? splitSeries(item.seriesName).series_number : null)
+            series_number: parsedSeriesNumber || (item.seriesName ? splitSeries(item.seriesName).series_number : null),
+            pageCount: item.numPages || null,
+            bookUrl: item.bookUrl
           };
         });
+
+        // Fetch extra details for the first 5 results in parallel to keep it fast
+        results = await Promise.all(rawResults.slice(0, 5).map(async (res: any) => {
+          const details = await fetchGoodreadsDetails(res.bookUrl);
+          if (details) {
+            return {
+              ...res,
+              isbn: details.isbn || res.isbn,
+              asin: details.asin || res.asin,
+              pageCount: details.pageCount || res.pageCount,
+              publisher: details.publisher || res.publisher,
+              publishedDate: details.publishedDate || res.publishedDate,
+              description: details.description || res.description,
+              categories: details.categories || res.categories
+            };
+          }
+          return res;
+        }));
+
+        // Add the rest of the results without extra details
+        if (rawResults.length > 5) {
+          results = [...results, ...rawResults.slice(5)];
+        }
       }
 
       res.json(results);
