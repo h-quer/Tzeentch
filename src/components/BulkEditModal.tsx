@@ -79,8 +79,7 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, onSuccess,
           className="w-full bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-lg p-3 text-tzeentch-cyan focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
         >
           <option value="" className="bg-tzeentch-bg text-tzeentch-text">Select Format</option>
-          <option value="Physical" className="bg-tzeentch-bg text-tzeentch-text">Physical</option>
-          <option value="E-Book" className="bg-tzeentch-bg text-tzeentch-text">E-Book</option>
+          <option value="Book" className="bg-tzeentch-bg text-tzeentch-text">Book</option>
           <option value="Audiobook" className="bg-tzeentch-bg text-tzeentch-text">Audiobook</option>
         </select>
       );
@@ -88,15 +87,16 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, onSuccess,
 
     if (selectedField === 'rating') {
       return (
-        <input
-          type="number"
-          min="1"
-          max="5"
+        <select
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
-          placeholder="1-5"
-          className="w-full bg-tzeentch-card/50 border border-tzeentch-cyan/20 rounded-lg p-3 text-tzeentch-text placeholder-tzeentch-cyan/30 focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
-        />
+          className="w-full bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-lg p-3 text-tzeentch-cyan focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
+        >
+          <option value="" className="bg-tzeentch-bg text-tzeentch-text">Select Rating</option>
+          {[0, 1, 2, 3, 4, 5].map(r => (
+            <option key={r} value={r.toString()} className="bg-tzeentch-bg text-tzeentch-text">{r} Stars</option>
+          ))}
+        </select>
       );
     }
 
