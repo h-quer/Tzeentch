@@ -53,7 +53,9 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
             <div className="flex justify-between items-center border-b border-tzeentch-cyan/10 pb-2">
               <span className="text-xs font-bold text-tzeentch-cyan/40 uppercase tracking-widest">Github</span>
               <a 
-                href="#" 
+                href="https://github.com/h-quer/Tzeentch" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-sm font-bold text-tzeentch-cyan hover:text-tzeentch-magenta transition-colors flex items-center gap-2"
               >
                 <Github size={16} />
