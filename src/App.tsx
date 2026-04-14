@@ -257,7 +257,7 @@ export default function App() {
       <header className="sticky top-0 z-10 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
               <img 
                 src="/tzeentch.png" 
                 alt="Tzeentch Logo" 
@@ -265,7 +265,7 @@ export default function App() {
                 referrerPolicy="no-referrer" 
               />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tighter text-tzeentch-cyan font-display">Tzeentch</h1>
+            <h1 className="hidden sm:block text-xl sm:text-2xl font-bold tracking-tighter text-tzeentch-cyan font-display">Tzeentch</h1>
           </div>
 
           {/* Search Field - Desktop */}
@@ -284,7 +284,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-1 sm:flex-none">
             {/* Search Field - Mobile Only */}
             <div className="relative group md:hidden">
               <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
@@ -477,18 +477,18 @@ export default function App() {
             exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-0 left-0 right-0 z-40 p-4 pointer-events-none"
           >
-            <div className="max-w-4xl mx-auto glass-tzeentch border border-tzeentch-cyan/30 rounded-2xl p-4 flex items-center justify-between shadow-[0_0_30px_rgba(34,211,238,0.2)] pointer-events-auto">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-tzeentch-cyan/10 rounded-full flex items-center justify-center text-tzeentch-cyan border border-tzeentch-cyan/20">
-                  <CheckCircle size={20} />
+            <div className="max-w-4xl mx-auto glass-tzeentch border border-tzeentch-cyan/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 shadow-[0_0_30px_rgba(34,211,238,0.2)] pointer-events-auto">
+              <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-center sm:justify-start">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-tzeentch-cyan/10 rounded-full flex items-center justify-center text-tzeentch-cyan border border-tzeentch-cyan/20">
+                  <CheckCircle size={18} className="sm:w-[20px] sm:h-[20px]" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-tzeentch-text">{selectedBookIds.length} Selected</p>
-                  <p className="text-xs text-tzeentch-cyan/60 uppercase tracking-widest">Multi-Select Mode</p>
+                  <p className="text-xs sm:text-sm font-bold text-tzeentch-text">{selectedBookIds.length} Selected</p>
+                  <p className="text-[10px] sm:text-xs text-tzeentch-cyan/60 uppercase tracking-widest">Multi-Select Mode</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => {
                     if (selectedBookIds.length === filteredBooks.length) {
@@ -497,35 +497,35 @@ export default function App() {
                       setSelectedBookIds(filteredBooks.map(b => b.id));
                     }
                   }}
-                  className="px-4 py-2 text-sm font-bold text-tzeentch-cyan/60 hover:text-tzeentch-cyan transition-colors"
+                  className="px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-bold text-tzeentch-cyan/60 hover:text-tzeentch-cyan transition-colors"
                 >
                   {selectedBookIds.length === filteredBooks.length ? 'Deselect All' : 'Select All'}
                 </button>
                 
-                <div className="w-px h-8 bg-tzeentch-cyan/20 mx-2"></div>
+                <div className="hidden sm:block w-px h-8 bg-tzeentch-cyan/20 mx-2"></div>
                 
                 <button
                   onClick={() => setIsBulkEditModalOpen(true)}
                   disabled={selectedBookIds.length === 0}
-                  className="px-4 py-2 bg-tzeentch-card border border-tzeentch-cyan/20 hover:border-tzeentch-cyan/50 text-tzeentch-text text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-tzeentch-card border border-tzeentch-cyan/20 hover:border-tzeentch-cyan/50 text-tzeentch-text text-xs sm:text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Edit Selected
+                  Edit
                 </button>
 
                 <button
                   onClick={() => setIsRefreshMetadataModalOpen(true)}
                   disabled={selectedBookIds.length === 0}
-                  className="px-4 py-2 bg-tzeentch-cyan/10 border border-tzeentch-cyan/30 hover:bg-tzeentch-cyan/20 text-tzeentch-cyan text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-tzeentch-cyan/10 border border-tzeentch-cyan/30 hover:bg-tzeentch-cyan/20 text-tzeentch-cyan text-xs sm:text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Refresh Metadata
+                  Refresh
                 </button>
                 
                 <button
                   onClick={() => setIsBulkDeleteModalOpen(true)}
                   disabled={selectedBookIds.length === 0}
-                  className="px-4 py-2 bg-tzeentch-magenta/20 border border-tzeentch-magenta/40 hover:bg-tzeentch-magenta/30 text-tzeentch-magenta text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-tzeentch-magenta/20 border border-tzeentch-magenta/40 hover:bg-tzeentch-magenta/30 text-tzeentch-magenta text-xs sm:text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Delete Selected
+                  Delete
                 </button>
               </div>
             </div>
