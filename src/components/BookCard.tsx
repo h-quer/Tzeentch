@@ -225,8 +225,8 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
           {book.format}
         </div>
 
-        {/* Overlay Actions */}
-        <div className="absolute inset-0 bg-tzeentch-bg/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
+        {/* Overlay Actions (Desktop) */}
+        <div className="hidden sm:flex absolute inset-0 bg-tzeentch-bg/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 items-center justify-center gap-2">
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -235,6 +235,19 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
             className="w-12 h-12 rounded-full bg-tzeentch-cyan text-tzeentch-bg flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,211,238,0.5)]"
           >
             <MoreHorizontal size={20} />
+          </button>
+        </div>
+
+        {/* Mobile Actions Button */}
+        <div className="sm:hidden absolute bottom-3 right-3 z-10">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className="w-8 h-8 rounded-full bg-tzeentch-bg/80 backdrop-blur-md text-tzeentch-cyan flex items-center justify-center border border-tzeentch-cyan/20 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+          >
+            <MoreHorizontal size={16} />
           </button>
         </div>
       </div>
