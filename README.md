@@ -56,11 +56,11 @@ Tzeentch should now be watching your specified port (8421 in the example above).
 
 ### Directories and the config file
 
-All data is stored in the data directory. Make sure that it exists and is readable / writable from within the container using the UID and GID set with the environment variable.
+All data is stored in the data directory. Make sure that it exists and is readable / writable from within the container.
 
 ### Security
 
-Tzeentch does not offer logins or any kind of security measures. This should be fine if only using it locally or behind a VPN, but even then you might want to put it behind an auth provider. Something like Caddy basic auth is advisable, or a more full-featured solution like Authentik.
+Tzeentch does not offer logins or any kind of security measures. This should be fine if only using it locally or behind a VPN, but even then you might want to put it behind an auth provider. Something like Caddy basic auth is advisable, or a more full-featured solution like Keycloak, Authentik, or Authelia.
 If you want to expose this to the Internet, you should definitely put it behind a proper auth solution.
 Tzeentch does not and will not provide auth functionality, for the simple reason that I trust neither myself nor some AI to design a safe one. Leave it to the professionaly, use an existing and tested auth solution.
 
@@ -78,15 +78,15 @@ I'm more than happy to expand it to cover additional use cases if they fit the o
 
 ### Not in scope
 
-* Auth functionality or any team/sharing features.
+* Auth functionality or any social/sharing features.
 * Any sort of database backend.
-* Data export functionality. Everything (except covers) is stored as simple CSV file in your bind mount. You can simply copy it. A dedicated export functionality would be redundant.
+* Data export functionality. Everything (except covers) is stored as CSV file in your bind mount. You can simply copy it. A dedicated export functionality would be redundant.
 
 ### Improvements I hope to implement (eventually)
 
 * Lots of tiny usability improvements that will probably pop up over time.
 * Possibly more metadata proviers
-* Generic CSV import functionality in addition to the Goodreads one
+* Sync to additional services, e.g. Calibre
 * Cover update / refresh without having to do a full metadata refresh
 
 ## How to contribute
