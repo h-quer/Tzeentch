@@ -827,13 +827,13 @@ async function startServer() {
         
         // Series handling
         let series = '';
-        let series_number = '';
+        let series_number: string | number = '';
         if (metadata.series && metadata.series.length > 0) {
           series = metadata.series[0].name || '';
-          series_number = metadata.series[0].sequence || '';
+          series_number = metadata.series[0].sequence !== undefined && metadata.series[0].sequence !== null ? metadata.series[0].sequence : '';
         } else if (metadata.seriesName) {
           series = metadata.seriesName;
-          series_number = metadata.seriesSequence || '';
+          series_number = metadata.seriesSequence !== undefined && metadata.seriesSequence !== null ? metadata.seriesSequence : '';
         }
 
         // Clean up series name if it contains the sequence number (common in some metadata providers)
@@ -842,7 +842,7 @@ async function startServer() {
           if (seriesMatch) {
             series = seriesMatch[1].trim();
             // If we didn't have a sequence number yet, use the one from the name
-            if (!series_number) {
+            if (series_number === '' || series_number === null || series_number === undefined) {
               series_number = seriesMatch[2];
             }
           }
@@ -915,7 +915,7 @@ async function startServer() {
           author,
           narrator,
           series,
-          series_number: series_number ? series_number.toString() : '',
+          series_number: (series_number !== '' && series_number !== null && series_number !== undefined) ? series_number.toString() : '',
           published_date,
           description,
           isbn,
@@ -957,12 +957,6 @@ async function startServer() {
             }
             if (existingBook.finished_reading) {
               delete updatedData.finished_reading;
-            }
-            
-            // Remove all other metadata fields
-            const metadataFields: Array<keyof Book> = ['title', 'author', 'narrator', 'series', 'series_number', 'published_date', 'description', 'isbn', 'asin', 'publisher', 'tags', 'page_count', 'metadata_source', 'cover_url', 'format'];
-            for (const field of metadataFields) {
-              delete updatedData[field];
             }
 
             // Handle status update based on which dates were actually updated
