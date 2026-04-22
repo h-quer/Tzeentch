@@ -35,15 +35,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('Overview');
   const [uiConfig, setUiConfig] = useState<UIConfig | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
 
   const viewType = activeTab !== 'Overview' ? (uiConfig?.viewPreferences?.[activeTab as BookStatus] || 'cards') : 'cards';
 
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedBookIds, setSelectedBookIds] = useState<number[]>([]);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
@@ -52,30 +54,78 @@ export default function App() {
   const [isRefreshMetadataModalOpen, setIsRefreshMetadataModalOpen] = useState(false);
   const [isAbsSyncModalOpen, setIsAbsSyncModalOpen] = useState(false);
   
-  const [visibleCount, setVisibleCount] = useState(50);
   const observerTarget = useRef<HTMLDivElement>(null);
+  const fetchAbortController = useRef<AbortController | null>(null);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const fetchBooks = async () => {
-    setLoading(true);
+  const fetchBooks = async (options: { reset?: boolean } = { reset: true }) => {
+    // Cancel any ongoing fetch to avoid race condition where an older request overwrites a newer one's state
+    if (fetchAbortController.current) {
+      fetchAbortController.current.abort();
+    }
+    const currentAbortController = new AbortController();
+    fetchAbortController.current = currentAbortController;
+
+    // If overview is active, we don't need to fetch any books for cards/list
+    if (activeTab === 'Overview') {
+      setBooks([]);
+      setHasMore(false);
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
+
+    if (options.reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       let data = [];
-      if (activeTab === 'Read' && uiConfig?.viewPreferences?.['Dropped'] === 'show-with-read') {
-        const [readRes, droppedRes] = await Promise.all([
-          fetch('/api/books?status=Read'),
-          fetch('/api/books?status=Dropped')
-        ]);
-        const readData = await readRes.json();
-        const droppedData = await droppedRes.json();
-        data = [...readData, ...droppedData];
+      const offset = options.reset ? 0 : books.length;
+      const limit = '&limit=50';
+      const offsetParam = `&offset=${offset}`;
+      
+      const sortParam = uiConfig?.sortFields && uiConfig.sortFields.length > 0 
+        ? `&sort=${encodeURIComponent(JSON.stringify(uiConfig.sortFields))}` 
+        : '';
+        
+      const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
+      const includeDropped = uiConfig?.viewPreferences?.['Dropped'] === 'show-with-read' ? '&includeDropped=true' : '';
+
+      const response = await fetch(`/api/books?status=${activeTab}${limit}${offsetParam}${sortParam}${searchParam}${includeDropped}`, {
+        signal: currentAbortController.signal
+      });
+      data = await response.json();
+      
+      if (options.reset) {
+        setBooks(data);
       } else {
-        const response = await fetch(`/api/books?status=${activeTab}`);
-        data = await response.json();
+        setBooks(prev => {
+          // Prevent duplicates incase React concurrent mode triggers double fetches
+          const existingIds = new Set(prev.map(b => b.id));
+          const newBooks = data.filter((b: Book) => !existingIds.has(b.id));
+          return [...prev, ...newBooks];
+        });
       }
-      setBooks(data);
-    } catch (error) {
+      
+      setHasMore(activeTab !== 'Overview' && data.length === 50);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Fetch aborted due to newer request');
+        return;
+      }
       console.error('Failed to fetch books:', error);
     } finally {
-      setLoading(false);
+      // Only disable loaders if this is still the active request
+      if (fetchAbortController.current === currentAbortController) {
+        if (options.reset) setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
@@ -145,85 +195,25 @@ export default function App() {
     }
   }, [uiConfig?.theme]);
 
+  // Fetch whenever config or search changes
   useEffect(() => {
-    fetchBooks();
-  }, [activeTab]);
+    // Only fetch if config is loaded
+    if (uiConfig) {
+      fetchBooks({ reset: true });
+    }
+  }, [activeTab, debouncedSearchQuery, uiConfig?.sortFields, uiConfig?.viewPreferences]);
 
   const handleBookUpdate = (updatedBook?: Book) => {
-    fetchBooks();
+    fetchBooks({ reset: true });
     if (updatedBook && selectedBook && updatedBook.id === selectedBook.id) {
       setSelectedBook(updatedBook);
     }
   };
 
-  const sortedBooks = React.useMemo(() => {
-    const sortFields = uiConfig?.sortFields && uiConfig.sortFields.length > 0 
-      ? uiConfig.sortFields 
-      : [
-          { id: 'finished_reading', direction: 'desc' },
-          { id: 'started_reading', direction: 'desc' },
-          { id: 'author', direction: 'asc' }
-        ];
-    
-    return [...books].sort((a, b) => {
-      for (const sort of sortFields) {
-        let valA = a[sort.id as keyof Book];
-        let valB = b[sort.id as keyof Book];
-        
-        if (sort.id === 'series') {
-          // Combine series and series_number for sorting
-          valA = a.series ? `${a.series} ${a.series_number || ''}`.trim() : undefined;
-          valB = b.series ? `${b.series} ${b.series_number || ''}`.trim() : undefined;
-        }
-        
-        if (valA === valB) continue;
-        
-        // Handle empty values (always put empty values at the top)
-        const isEmpty = (v: any) => v === null || v === undefined || v === '';
-        if (isEmpty(valA) && !isEmpty(valB)) return -1;
-        if (!isEmpty(valA) && isEmpty(valB)) return 1;
-        
-        // Compare values
-        let aCmp = valA;
-        let bCmp = valB;
-        if (typeof aCmp === 'string') aCmp = aCmp.toLowerCase();
-        if (typeof bCmp === 'string') bCmp = bCmp.toLowerCase();
-
-        if (aCmp! < bCmp!) return sort.direction === 'asc' ? -1 : 1;
-        if (aCmp! > bCmp!) return sort.direction === 'asc' ? 1 : -1;
-      }
-      return b.id - a.id; // fallback to newest first
-    });
-  }, [books, uiConfig?.sortFields]);
-
-  const filteredBooks = React.useMemo(() => {
-    if (!searchQuery.trim()) return sortedBooks;
-    
-    const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
-    
-    return sortedBooks.filter(book => {
-      // Create a single string containing all searchable text for this book
-      const searchableText = Object.values(book)
-        .filter(val => val !== null && val !== undefined)
-        .map(val => String(val).toLowerCase())
-        .join(' ');
-        
-      // Check if ALL search terms are present anywhere in the searchable text
-      return searchTerms.every(term => searchableText.includes(term));
-    });
-  }, [sortedBooks, searchQuery]);
-
-  // Reset visible count when tab, view type, or search changes
-  useEffect(() => {
-    setVisibleCount(50);
-  }, [activeTab, viewType, searchQuery]);
-
-  const visibleBooks = React.useMemo(() => {
-    return filteredBooks.slice(0, visibleCount);
-  }, [filteredBooks, visibleCount]);
-
   const handleLoadMore = () => {
-    setVisibleCount(prev => Math.min(prev + 50, filteredBooks.length));
+    if (!loading && !loadingMore && hasMore) {
+      fetchBooks({ reset: false });
+    }
   };
 
   useEffect(() => {
@@ -231,9 +221,9 @@ export default function App() {
     
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && visibleCount < filteredBooks.length) {
-          handleLoadMore();
-        }
+         if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
+            handleLoadMore();
+         }
       },
       { threshold: 0.1 }
     );
@@ -243,7 +233,7 @@ export default function App() {
     }
 
     return () => observer.disconnect();
-  }, [viewType, visibleCount, filteredBooks.length]);
+  }, [viewType, loading, loadingMore, hasMore, books.length]);
 
   const handleToggleSelection = (id: number) => {
     setSelectedBookIds(prev => 
@@ -400,9 +390,9 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <OverviewPanel books={books} viewPreferences={uiConfig?.viewPreferences} />
+                <OverviewPanel viewPreferences={uiConfig?.viewPreferences} />
               </motion.div>
-            ) : filteredBooks.length > 0 ? (
+            ) : books.length > 0 ? (
               <motion.div 
                 key={`${activeTab}-${viewType}`}
                 initial={{ opacity: 0, y: 20 }}
@@ -412,7 +402,7 @@ export default function App() {
                 {viewType === 'cards' ? (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                      {visibleBooks.map((book) => (
+                      {books.map((book) => (
                         <BookCard 
                           key={book.id} 
                           book={book} 
@@ -426,7 +416,7 @@ export default function App() {
                         />
                       ))}
                     </div>
-                    {visibleCount < filteredBooks.length && (
+                    {hasMore && (
                       <div ref={observerTarget} className="h-20 flex items-center justify-center mt-8">
                         <div className="w-6 h-6 border-2 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin"></div>
                       </div>
@@ -434,7 +424,7 @@ export default function App() {
                   </>
                 ) : (
                   <BookList 
-                    books={visibleBooks} 
+                    books={books} 
                     onBookClick={(book) => setSelectedBook(book)} 
                     onUpdate={handleBookUpdate}
                     columns={(uiConfig?.listColumns || []).filter(c => c !== 'series_number')} 
@@ -443,7 +433,7 @@ export default function App() {
                     onToggleSelection={handleToggleSelection}
                     viewPreferences={uiConfig?.viewPreferences}
                     onLoadMore={handleLoadMore}
-                    hasMore={visibleCount < filteredBooks.length}
+                    hasMore={hasMore}
                   />
                 )}
               </motion.div>
@@ -491,15 +481,15 @@ export default function App() {
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => {
-                    if (selectedBookIds.length === filteredBooks.length) {
+                    if (selectedBookIds.length === books.length) {
                       setSelectedBookIds([]);
                     } else {
-                      setSelectedBookIds(filteredBooks.map(b => b.id));
+                      setSelectedBookIds(books.map(b => b.id));
                     }
                   }}
                   className="px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-bold text-tzeentch-cyan/60 hover:text-tzeentch-cyan transition-colors"
                 >
-                  {selectedBookIds.length === filteredBooks.length ? 'Deselect All' : 'Select All'}
+                  {selectedBookIds.length === books.length ? 'Deselect All' : 'Select All'}
                 </button>
                 
                 <div className="hidden sm:block w-px h-8 bg-tzeentch-cyan/20 mx-2"></div>
