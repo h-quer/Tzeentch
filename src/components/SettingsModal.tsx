@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, ArrowUp, ArrowDown, Plus, Trash2, Monitor, Sun, Moon, LayoutGrid, List, Upload, FileText, Check, Loader2, AlertCircle, EyeOff, Combine } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, Plus, Trash2, Monitor, Sun, Moon, LayoutGrid, List, Upload, FileText, Check, Loader2, AlertCircle, EyeOff, Combine, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UIConfig } from '../types';
 
@@ -46,7 +46,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
     Wishlist: 'cards',
     Dropped: 'cards'
   });
-  const [activeTab, setActiveTab] = useState<'card' | 'list' | 'sort' | 'theme' | 'import'>('card');
+  const [activeTab, setActiveTab] = useState<'card' | 'list' | 'sort' | 'theme' | 'data'>('card');
 
   // Import State
   const [file, setFile] = useState<File | null>(null);
@@ -380,10 +380,10 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
             Theme
           </button>
           <button
-            onClick={() => setActiveTab('import')}
-            className={`flex-1 min-w-[100px] py-4 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === 'import' ? 'text-tzeentch-cyan border-b-2 border-tzeentch-cyan bg-tzeentch-cyan/5' : 'text-tzeentch-text-faint hover:text-tzeentch-cyan/70'}`}
+            onClick={() => setActiveTab('data')}
+            className={`flex-1 min-w-[100px] py-4 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === 'data' ? 'text-tzeentch-cyan border-b-2 border-tzeentch-cyan bg-tzeentch-cyan/5' : 'text-tzeentch-text-faint hover:text-tzeentch-cyan/70'}`}
           >
-            Import
+            Data
           </button>
         </div>
 
@@ -470,7 +470,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
                 </div>
               </motion.div>
             ) : (
-              <motion.div key="import" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <motion.div key="data" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <div className="space-y-6">
                   {importSuccessCount !== null ? (
                     <div className="text-center py-6 space-y-4">
@@ -570,6 +570,21 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
                         {importLoading ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
                         {importLoading ? 'ABSORBING...' : 'START RITUAL'}
                       </button>
+
+                      <div className="h-px bg-tzeentch-cyan/10 w-full my-6" />
+
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-tzeentch-cyan">EXPORT TO CSV</h3>
+                        <p className="text-xs text-tzeentch-text-muted">Extract your entire library archive as a human-readable CSV file.</p>
+                        <a 
+                          href="/api/export" 
+                          download="library_export.csv"
+                          className="w-full py-3 bg-tzeentch-card border border-tzeentch-cyan/30 text-tzeentch-cyan rounded-xl font-bold hover:bg-tzeentch-cyan hover:text-tzeentch-bg transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,211,238,0.1)] block text-center"
+                        >
+                          <Download size={18} />
+                          EXTRACT ARCHIVE
+                        </a>
+                      </div>
                     </div>
                   )}
                 </div>
