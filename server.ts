@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import Papa from 'papaparse';
 import fs from 'fs';
-import { getBooks, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getBookById, getTags } from './src/db.js';
+import { getBooks, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv } from './src/db.js';
 import { Book, SearchResult, BookStatus } from './src/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1142,6 +1142,18 @@ async function startServer() {
     
     deleteBooks(ids);
     res.json({ success: true });
+  });
+
+  app.get('/api/export', (req, res) => {
+    try {
+      const csv = exportDbToCsv();
+      res.header('Content-Type', 'text/csv');
+      res.attachment('library_export.csv');
+      res.send(csv);
+    } catch (error) {
+      console.error('Error exporting database:', error);
+      res.status(500).json({ error: 'Failed to export library' });
+    }
   });
 
   app.post('/api/books/bulk-refresh-metadata', async (req, res) => {
