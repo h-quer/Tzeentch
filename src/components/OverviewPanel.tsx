@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Book } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend } from 'recharts';
 import { motion } from 'motion/react';
+import { Loader2 } from 'lucide-react';
 
 interface OverviewPanelProps {
-  books: Book[];
+  books?: Book[]; // Kept for backwards compatibility but not strictly needed anymore
   viewPreferences?: Record<string, 'cards' | 'list' | 'disabled' | 'show-with-read'>;
 }
 
@@ -19,100 +20,26 @@ const COLORS = [
   '#06b6d4'  // Darker Cyan
 ];
 
-export default function OverviewPanel({ books, viewPreferences }: OverviewPanelProps) {
-  const stats = useMemo(() => {
-    // 1. Category counts
-    const categories = {
-      Reading: 0,
-      Read: 0,
-      Backlog: 0,
-      Wishlist: 0,
-      Dropped: 0,
-    };
-    
-    // 2. Format counts
-    const formats = {
-      Book: 0,
-      Audiobook: 0,
-    };
+export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-    // 3. Tag counts
-    const tagCounts: Record<string, number> = {};
-
-    // 4. Finished reading per year
-    const finishedYears: Record<string, number> = {};
-
-    // 5. Author counts
-    const authorCounts: Record<string, number> = {};
-
-    books.forEach(book => {
-      // Categories
-      if (categories[book.status as keyof typeof categories] !== undefined) {
-        categories[book.status as keyof typeof categories]++;
-      }
-
-      // Formats
-      if (book.format === 'Book' || book.format === 'Audiobook') {
-        formats[book.format]++;
-      }
-
-      // Tags
-      if (book.tags) {
-        const tags = book.tags.split(',').map(t => t.trim()).filter(t => t);
-        tags.forEach(tag => {
-          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
-      }
-
-      // Finished reading
-      if (book.status === 'Read' && book.finished_reading) {
-        const year = book.finished_reading.substring(0, 4);
-        if (year && !isNaN(Number(year))) {
-          finishedYears[year] = (finishedYears[year] || 0) + 1;
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/stats')
+      .then(res => res.json())
+      .then(data => {
+        if (mounted) {
+          setStats(data);
+          setLoading(false);
         }
-      }
-
-      // Authors
-      if (book.author) {
-        authorCounts[book.author] = (authorCounts[book.author] || 0) + 1;
-      }
-    });
-
-    const categoryData = Object.entries(categories)
-      .filter(([, value]) => value > 0)
-      .map(([name, value]) => ({ name, value }));
-
-    const formatData = Object.entries(formats).map(([name, value]) => ({ name, value }));
-
-    const topTags = Object.entries(tagCounts)
-      .filter(([, value]) => value > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([name, value]) => ({ name, value }));
-
-    const currentYear = new Date().getFullYear();
-    const last8Years = Array.from({ length: 8 }, (_, i) => (currentYear - 7 + i).toString());
-    const yearData = last8Years
-      .map(year => ({
-        name: year,
-        value: finishedYears[year] || 0
-      }))
-      .filter(item => item.value > 0);
-
-    const topAuthors = Object.entries(authorCounts)
-      .filter(([, value]) => value > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([name, value]) => ({ name, value }));
-
-    return {
-      categoryData,
-      formatData,
-      topTags,
-      yearData,
-      topAuthors
-    };
-  }, [books]);
+      })
+      .catch(err => {
+        console.error('Failed to fetch stats:', err);
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -124,6 +51,16 @@ export default function OverviewPanel({ books, viewPreferences }: OverviewPanelP
     }
     return null;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-20">
+        <Loader2 className="animate-spin text-tzeentch-cyan w-10 h-10" />
+      </div>
+    );
+  }
+
+  if (!stats) return null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
