@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import Papa from 'papaparse';
 import fs from 'fs';
-import { getBooks, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv } from './src/db.js';
+import { getBooks, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv, getStats } from './src/db.js';
 import { Book, SearchResult, BookStatus } from './src/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -989,14 +989,50 @@ async function startServer() {
 
   // API Routes
   app.get('/api/books', (req, res) => {
-    const { status } = req.query;
-    const books = getBooks(status === 'Overview' ? undefined : status as string);
-    res.json(books);
+    try {
+      const status = req.query.status as string;
+      const search = req.query.search as string;
+      const tag = req.query.tag as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+      const sortFields = req.query.sort ? JSON.parse(req.query.sort as string) : undefined;
+      
+      const statuses: string[] = [];
+      if (status && status !== 'Overview') {
+        statuses.push(status);
+        if (status === 'Read' && req.query.includeDropped === 'true') {
+          statuses.push('Dropped');
+        }
+      }
+
+      const books = getBooks({
+        statuses: statuses.length > 0 ? statuses : undefined,
+        search,
+        tag,
+        sortFields,
+        limit,
+        offset
+      });
+      res.json(books);
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      res.status(500).json({ error: 'Failed to fetch books' });
+    }
   });
 
   app.get('/api/tags', (req, res) => {
     const tags = getTags();
     res.json(tags);
+  });
+
+  app.get('/api/stats', (req, res) => {
+    try {
+      const stats = getStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      res.status(500).json({ error: 'Failed to fetch stats' });
+    }
   });
 
   app.post('/api/books', async (req, res) => {
