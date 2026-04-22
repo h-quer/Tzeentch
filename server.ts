@@ -1494,6 +1494,9 @@ async function startServer() {
         }
 
         const { title: cleanTitle, series: parsedSeries, series_number: parsedSeriesNumber } = parseGoodreadsTitle(row.Title);
+        
+        let ratingValue = parseInt(row['My Rating']);
+        const validRating = (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) ? ratingValue : undefined;
 
         const book: any = {
           title: cleanTitle,
@@ -1501,7 +1504,7 @@ async function startServer() {
           isbn: isbn,
           status: finalStatus as any,
           format: format || inferredFormat,
-          rating: parseInt(row['My Rating']) || 0,
+          rating: validRating,
           started_reading: startedReadingDate,
           finished_reading: finishedReadingDate,
           notes: row['My Review'] || undefined,
