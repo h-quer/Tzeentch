@@ -15,9 +15,9 @@ I built it because I was looking for a self-hosted Goodreads replacements withou
 There are some other self-hostable services already that do very similar things, but they mostly focus on books and don't deal well with audiobooks. I wanted to be able to integrate audiobooks just as prominently as books.
 
 ## Will it keep my data safe?
-I did primarily use the Gemini AI to create this. It is "just" a kind-of fancy UI on top of a CSV file, though.
-All data (except cover images) are kept in this CSV file. No database, no arbitrary abstraction, just plain text files.
-You should, of course, have a 3-2-1 backup strategy already and you should make sure that the bind mount with the CSV file is part of it.
+I did primarily use the Gemini AI to create this. It is "just" a kind-of fancy UI on top of a trivial database, though.
+While data is stored in a SQLite database for efficiency reasons, it's structure is very basic and there is a CSV export readily available. This ensures human readability and makes it very easy to take your data somewhere else if necessary.
+You should, of course, have a 3-2-1 backup strategy already and you should make sure that the bind mount with the data file is part of it.
 
 ## Screenshots
 Card view in light mode and list view in dark mode.
@@ -80,7 +80,6 @@ I'm more than happy to expand it to cover additional use cases if they fit the o
 
 * Auth functionality or any social/sharing features.
 * Any sort of database backend.
-* Data export functionality. Everything (except covers) is stored as CSV file in your bind mount. You can simply copy it. A dedicated export functionality would be redundant.
 
 ### Improvements I hope to implement (eventually)
 
