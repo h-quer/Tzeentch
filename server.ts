@@ -4,13 +4,14 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import Papa from 'papaparse';
 import fs from 'fs';
+import os from 'os';
 import { getBooks, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv, getStats } from './src/db.js';
 import { Book, SearchResult, BookStatus } from './src/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: os.tmpdir() });
 
 const coversDir = path.resolve(__dirname, 'data/covers');
 const customCssPath = path.resolve(__dirname, 'data/custom.css');
