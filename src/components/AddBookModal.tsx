@@ -78,9 +78,16 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
     setSelectedTags(selectedTags.filter(t => t !== tag));
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const handleSourceChange = (newSource: 'google' | 'audible' | 'goodreads') => {
+    setSource(newSource);
+    // Automatically trigger search when switching sources if a query exists
+    if (query.trim()) {
+      handleSearchInternal(query, newSource);
+    }
+  };
+
+  const handleSearchInternal = async (searchQuery: string, searchSource: string) => {
+    if (!searchQuery.trim()) return;
     
     // Cancel previous request if still running
     if (abortControllerRef.current) {
@@ -92,7 +99,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&source=${source}`, {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&source=${searchSource}`, {
         signal: abortController.signal
       });
       const data = await response.json();
@@ -103,7 +110,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
         setResults([]);
       }
       // Default format to Audiobook if searching Audible
-      if (source === 'audible') {
+      if (searchSource === 'audible') {
         setFormat('Audiobook');
       } else {
         setFormat('Book');
@@ -120,6 +127,11 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
         abortControllerRef.current = null;
       }
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearchInternal(query, source);
   };
 
   const handleAdd = async () => {
@@ -243,7 +255,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 {(['google', 'audible', 'goodreads'] as const).map((s) => (
                   <button
                     key={s}
-                    onClick={() => setSource(s)}
+                    onClick={() => handleSourceChange(s)}
                     className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${source === s ? 'bg-tzeentch-cyan text-tzeentch-bg' : 'text-tzeentch-cyan/40 hover:text-tzeentch-cyan'}`}
                   >
                     {s === 'google' ? 'Google Books' : s}
@@ -274,7 +286,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 {results.map((result, idx) => (
                   <button
                     key={idx}
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedBook(result);
                       if (result.categories) {
                         setSelectedTags(result.categories.split(',').map(c => c.trim()).filter(Boolean));
@@ -284,6 +296,29 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                       // Auto-set format if source is Audible
                       if (result.metadata_source?.toLowerCase().includes('audible')) {
                         setFormat('Audiobook');
+                      }
+
+                      // Enrich Goodreads metadata if missing fields
+                      if (source === 'goodreads' && result.metadata_source) {
+                        try {
+                          const enrichRes = await fetch(`/api/metadata/enrich?source=goodreads&url=${encodeURIComponent(result.metadata_source)}`);
+                          const details = await enrichRes.json();
+                          if (details && Object.keys(details).length > 0) {
+                            setSelectedBook(prev => {
+                              if (!prev) return null;
+                              return {
+                                ...prev,
+                                isbn: details.isbn || prev.isbn,
+                                pageCount: details.pageCount || prev.pageCount,
+                                publisher: details.publisher || prev.publisher,
+                                publishedDate: details.publishedDate || prev.publishedDate,
+                                description: (details.description && (!prev.description || prev.description.length < details.description.length)) ? details.description : prev.description
+                              };
+                            });
+                          }
+                        } catch (e) {
+                          console.error('Failed to enrich metadata:', e);
+                        }
                       }
                     }}
                     className="flex gap-4 p-4 bg-tzeentch-card/40 rounded-xl border border-tzeentch-cyan/10 hover:border-tzeentch-cyan/40 hover:bg-tzeentch-card/60 transition-all text-left group"
