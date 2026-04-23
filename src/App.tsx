@@ -242,9 +242,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen text-tzeentch-text font-sans selection:bg-tzeentch-cyan/30">
+    <div className="h-screen overflow-hidden flex flex-col text-tzeentch-text font-sans selection:bg-tzeentch-cyan/30">
       {/* Header */}
-      <header className="sticky top-0 z-10 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4">
+      <header className="z-10 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4 flex-shrink-0">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
@@ -337,9 +337,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+      <main className="flex-1 flex flex-col min-h-0 max-w-6xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-8 overflow-hidden">
         {/* Tabs */}
-        <div className="flex gap-1.5 sm:gap-2 mb-8 bg-tzeentch-card/50 p-1 rounded-xl w-full sm:w-fit mx-auto border border-tzeentch-cyan/10 overflow-x-auto no-scrollbar">
+        <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-8 bg-tzeentch-card/50 p-1 rounded-xl w-full sm:w-fit mx-auto border border-tzeentch-cyan/10 overflow-x-auto no-scrollbar">
           {TABS.filter(tab => 
             tab.id === 'Overview' || 
             (uiConfig?.viewPreferences?.[tab.id as BookStatus] !== 'disabled' && 
@@ -368,9 +368,9 @@ export default function App() {
             );
           })}
         </div>
-
+ 
         {/* Content */}
-        <div className="relative min-h-[400px] pb-24">
+        <div className="flex-1 min-h-0 relative pb-24 overflow-hidden">
           <AnimatePresence mode="wait">
             {loading || !uiConfig ? (
               <motion.div 
@@ -378,7 +378,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20 gap-4"
+                className="h-full flex flex-col items-center justify-center gap-4"
               >
                 <div className="w-12 h-12 border-4 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin shadow-[0_0_15px_rgba(34,211,238,0.2)]"></div>
                 <p className="text-tzeentch-cyan/60 italic font-medium tracking-widest animate-pulse">DIVINING THE ARCHIVES...</p>
@@ -386,6 +386,7 @@ export default function App() {
             ) : activeTab === 'Overview' ? (
               <motion.div
                 key="overview"
+                className="h-full"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -395,12 +396,17 @@ export default function App() {
             ) : books.length > 0 ? (
               <motion.div 
                 key={`${activeTab}-${viewType}`}
+                className="h-full flex flex-col min-h-0"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
                 {viewType === 'cards' ? (
-                  <>
+                  <div 
+                    onMouseEnter={(e) => e.currentTarget.focus()}
+                    tabIndex={0}
+                    className="flex-1 overflow-y-auto no-scrollbar pb-8 outline-none"
+                  >
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                       {books.map((book) => (
                         <BookCard 
@@ -421,7 +427,7 @@ export default function App() {
                         <div className="w-6 h-6 border-2 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin"></div>
                       </div>
                     )}
-                  </>
+                  </div>
                 ) : (
                   <BookList 
                     books={books} 
@@ -443,7 +449,7 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20 text-center"
+                className="h-full flex flex-col items-center justify-center text-center"
               >
                 <div className="w-20 h-20 bg-tzeentch-cyan/5 rounded-full flex items-center justify-center text-tzeentch-cyan/20 mb-6 border border-tzeentch-cyan/10">
                   <Library size={40} />
