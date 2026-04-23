@@ -63,7 +63,11 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
   if (!stats) return null;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
+    <div 
+      onMouseEnter={(e) => e.currentTarget.focus()}
+      tabIndex={0}
+      className="h-full overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 outline-none"
+    >
       {/* Categories - Horizontal Bar Chart */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
