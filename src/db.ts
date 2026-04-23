@@ -473,6 +473,59 @@ export const updateBooks = (ids: number[], updates: Partial<Book>) => {
   return false;
 };
 
+/**
+ * Performs multiple different updates and additions in a single transaction.
+ * Optimized for sync operations.
+ */
+export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, updates: Partial<Book>}[]): {added: number, updated: number} => {
+  let added = 0;
+  let updated = 0;
+
+  const transaction = db.transaction(() => {
+    // Handle Additions
+    if (toAdd.length > 0) {
+      const firstBookKeys = Object.keys(toAdd[0]).filter(k => k !== 'id');
+      const insertStmt = db.prepare(`
+        INSERT INTO books (${firstBookKeys.join(', ')}) 
+        VALUES (${firstBookKeys.map(() => '?').join(', ')})
+      `);
+
+      for (const book of toAdd) {
+        const values = firstBookKeys.map(k => (book as any)[k] ?? null);
+        const result = insertStmt.run(...values);
+        const newId = Number(result.lastInsertRowid);
+        if ('tags' in book) {
+          syncTags(newId, book.tags);
+        }
+        added++;
+      }
+    }
+
+    // Handle Updates
+    for (const item of toUpdate) {
+      const fields = Object.keys(item.updates).filter(k => k !== 'id');
+      if (fields.length === 0) continue;
+
+      const setClause = fields.map(field => `${field} = ?`).join(', ');
+      const values = fields.map(k => (item.updates as any)[k] ?? null);
+      values.push(item.id);
+
+      const updateStmt = db.prepare(`UPDATE books SET ${setClause} WHERE id = ?`);
+      const result = updateStmt.run(...values);
+      if (result.changes > 0) {
+        if ('tags' in item.updates) {
+          syncTags(item.id, item.updates.tags);
+        }
+        updated++;
+      }
+    }
+  });
+
+  transaction();
+  cachedTags = null;
+  return { added, updated };
+};
+
 export const deleteBook = (id: number) => {
   const stmt = db.prepare('DELETE FROM books WHERE id = ?');
   const result = stmt.run(id);
