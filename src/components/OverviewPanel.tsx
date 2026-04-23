@@ -1,79 +1,203 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-@import "tailwindcss";
+import React, { useState, useEffect } from 'react';
+import { Book } from '../types';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend } from 'recharts';
+import { motion } from 'motion/react';
+import { Loader2 } from 'lucide-react';
 
-@layer base {
-  :root {
-    /* Light Mode (Tzeentch / WH40k inspired) */
-    --color-tzeentch-bg: #f8fafc;
-    --color-tzeentch-card: #ffffff;
-    --color-tzeentch-cyan: #0284c7;
-    --color-tzeentch-magenta: #c026d3;
-    --color-tzeentch-gold: #d97706;
-    --color-tzeentch-warp: #e0e7ff;
+interface OverviewPanelProps {
+  books?: Book[]; // Kept for backwards compatibility but not strictly needed anymore
+  viewPreferences?: Record<string, 'cards' | 'list' | 'disabled' | 'show-with-read'>;
+}
+
+const COLORS = [
+  '#22d3ee', // Tzeentch Cyan
+  '#c026d3', // Warp Magenta
+  '#fbbf24', // Eldritch Gold
+  '#818cf8', // Indigo
+  '#2dd4bf', // Teal
+  '#ec4899', // Pink
+  '#8b5cf6', // Violet
+  '#06b6d4'  // Darker Cyan
+];
+
+export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
     
-    --color-tzeentch-text: #0f172a;
-    --color-tzeentch-text-muted: #475569;
-    --color-tzeentch-text-faint: #94a3b8;
-    --color-tzeentch-overlay: rgba(248, 250, 252, 0.8);
+    fetch('/api/stats', { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => {
+        setStats(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch stats:', err);
+          setLoading(false);
+        }
+      });
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-tzeentch-bg border border-tzeentch-cyan/30 p-2 rounded shadow-lg text-xs font-bold text-tzeentch-cyan">
+          <p>{`${label || payload[0].name} : ${payload[0].value}`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-20">
+        <Loader2 className="animate-spin text-tzeentch-cyan w-10 h-10" />
+      </div>
+    );
   }
 
-  .dark {
-    /* Dark Mode (Current) */
-    --color-tzeentch-bg: #050b18;
-    --color-tzeentch-card: #0f172a;
-    --color-tzeentch-cyan: #22d3ee;
-    --color-tzeentch-magenta: #d946ef;
-    --color-tzeentch-gold: #fbbf24;
-    --color-tzeentch-warp: #1e1b4b;
-    
-    --color-tzeentch-text: #e2e8f0;
-    --color-tzeentch-text-muted: #94a3b8;
-    --color-tzeentch-text-faint: #475569;
-    --color-tzeentch-overlay: rgba(44, 44, 36, 0.8);
-  }
+  if (!stats) return null;
 
-  body {
-    @apply bg-tzeentch-bg text-tzeentch-text selection:bg-tzeentch-cyan/30;
-    background-image: 
-      radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--color-tzeentch-cyan) 5%, transparent) 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--color-tzeentch-magenta) 5%, transparent) 0%, transparent 50%);
-    background-attachment: fixed;
-  }
-}
+  return (
+    <div 
+      onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
+      tabIndex={0}
+      className="h-full overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg transition-shadow outline-none rounded-xl"
+    >
+      {/* Categories - Horizontal Bar Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-4 flex flex-col"
+      >
+        <h3 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-4">Items by Category</h3>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#22d3ee" opacity={0.1} horizontal={false} />
+              <XAxis type="number" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+              <YAxis dataKey="name" type="category" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} width={80} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#22d3ee', opacity: 0.1 }} />
+              <Bar dataKey="value" fill="#22d3ee" radius={[0, 4, 4, 0]}>
+                {stats.categoryData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
 
-@theme {
-  --color-tzeentch-bg: var(--color-tzeentch-bg);
-  --color-tzeentch-card: var(--color-tzeentch-card);
-  --color-tzeentch-cyan: var(--color-tzeentch-cyan);
-  --color-tzeentch-magenta: var(--color-tzeentch-magenta);
-  --color-tzeentch-gold: var(--color-tzeentch-gold);
-  --color-tzeentch-warp: var(--color-tzeentch-warp);
-  
-  --color-tzeentch-text: var(--color-tzeentch-text);
-  --color-tzeentch-text-muted: var(--color-tzeentch-text-muted);
-  --color-tzeentch-text-faint: var(--color-tzeentch-text-faint);
-  --color-tzeentch-overlay: var(--color-tzeentch-overlay);
-  
-  --font-display: "Space Grotesk", sans-serif;
-}
+      {/* Formats - Pie Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-4 flex flex-col"
+      >
+        <h3 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-4">Books vs Audiobooks</h3>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={stats.formatData}
+                cx="50%"
+                cy="45%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+                stroke="none"
+              >
+                {stats.formatData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={index === 0 ? '#22d3ee' : '#c026d3'} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                verticalAlign="bottom" 
+                align="center"
+                iconType="circle"
+                formatter={(value, entry: any) => (
+                  <span className="text-[10px] font-bold text-tzeentch-text-muted uppercase tracking-wider ml-1">
+                    {value} ({entry.payload.value})
+                  </span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
 
-@keyframes warp-shift {
-  0%, 100% { filter: hue-rotate(0deg) brightness(1); }
-  50% { filter: hue-rotate(15deg) brightness(1.2); }
-}
+      {/* Top Tags - Vertical Bar Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-4 flex flex-col"
+      >
+        <h3 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-4">Top 8 Tags</h3>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.topTags} margin={{ top: 5, right: 5, left: -20, bottom: 25 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#22d3ee" opacity={0.1} vertical={false} />
+              <XAxis dataKey="name" stroke="#22d3ee" fontSize={10} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={50} />
+              <YAxis stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#22d3ee', opacity: 0.1 }} />
+              <Bar dataKey="value" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
 
-.animate-warp {
-  animation: warp-shift 8s ease-in-out infinite;
-}
+      {/* Finished Reading per Year - Vertical Bar Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-4 flex flex-col"
+      >
+        <h3 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-4">Finished Reading (Last 8 Years)</h3>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.yearData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.1} vertical={false} />
+              <XAxis dataKey="name" stroke="#fbbf24" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#fbbf24" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#fbbf24', opacity: 0.1 }} />
+              <Bar dataKey="value" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
 
-.glass-tzeentch {
-  @apply bg-tzeentch-card/40 backdrop-blur-xl border border-tzeentch-cyan/10;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+      {/* Top Authors - Bar Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-4 flex flex-col lg:col-span-2"
+      >
+        <h3 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-4">Top 8 Authors</h3>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.topAuthors} margin={{ top: 5, right: 5, left: -20, bottom: 25 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#c026d3" opacity={0.1} vertical={false} />
+              <XAxis dataKey="name" stroke="#c026d3" fontSize={10} tickLine={false} axisLine={false} angle={-15} textAnchor="end" height={40} />
+              <YAxis stroke="#c026d3" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#c026d3', opacity: 0.1 }} />
+              <Bar dataKey="value" fill="#c026d3" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+    </div>
+  );
 }
