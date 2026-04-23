@@ -239,7 +239,20 @@ export const getStats = () => {
   const last8Years = Array.from({ length: 8 }, (_, i) => (currentYear - 7 + i).toString());
 
   // Categories
-  const categoryData = db.prepare(`SELECT status as name, COUNT(*) as value FROM books WHERE status IN ('Reading', 'Read', 'Backlog', 'Wishlist', 'Dropped') GROUP BY status`).all() as {name: string, value: number}[];
+  const categoryData = db.prepare(`
+    SELECT status as name, COUNT(*) as value 
+    FROM books 
+    WHERE status IN ('Reading', 'Read', 'Backlog', 'Wishlist', 'Dropped') 
+    GROUP BY status
+    ORDER BY CASE status
+      WHEN 'Reading' THEN 1
+      WHEN 'Read' THEN 2
+      WHEN 'Backlog' THEN 3
+      WHEN 'Wishlist' THEN 4
+      WHEN 'Dropped' THEN 5
+      ELSE 6
+    END ASC
+  `).all() as {name: string, value: number}[];
 
   // Formats
   const formatData = db.prepare(`SELECT format as name, COUNT(*) as value FROM books WHERE format IN ('Book', 'Audiobook') GROUP BY format`).all() as {name: string, value: number}[];
