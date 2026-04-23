@@ -413,12 +413,19 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
   const observerTarget = useRef<HTMLTableRowElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Ref for observer to track state without re-binding
+  const scrollStateRef = useRef({ hasMore });
   useEffect(() => {
-    if (!onLoadMore || !hasMore) return;
+    scrollStateRef.current = { hasMore };
+  }, [hasMore]);
+
+  useEffect(() => {
+    if (!onLoadMore) return;
     
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        const { hasMore } = scrollStateRef.current;
+        if (entries[0].isIntersecting && hasMore) {
           onLoadMore();
         }
       },
@@ -430,14 +437,14 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
     }
 
     return () => observer.disconnect();
-  }, [onLoadMore, hasMore]);
+  }, [onLoadMore]);
 
   return (
     <div 
       ref={containerRef}
-      onMouseEnter={() => containerRef.current?.focus()}
+      onMouseEnter={() => containerRef.current?.focus({ preventScroll: true })}
       tabIndex={0}
-      className="flex-1 bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto relative no-scrollbar outline-none"
+      className="flex-1 bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto relative no-scrollbar focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg transition-shadow outline-none"
     >
       <table className="w-full text-left border-collapse">
         <thead className="sticky top-0 z-20 bg-tzeentch-card/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
