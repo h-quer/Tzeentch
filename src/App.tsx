@@ -553,6 +553,7 @@ export default function App() {
         isOpen={isBulkEditModalOpen}
         onClose={() => setIsBulkEditModalOpen(false)}
         selectedIds={selectedBookIds}
+        selectedBooks={books.filter(b => selectedBookIds.includes(b.id))}
         onSuccess={() => {
           fetchBooks();
           setSelectedBookIds([]);
