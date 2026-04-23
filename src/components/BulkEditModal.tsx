@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { X, Save, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Book } from '../types';
 import { AVAILABLE_FIELDS } from './SettingsModal';
 
 interface BulkEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedIds: number[];
+  selectedBooks: Book[];
   onSuccess: () => void;
   viewPreferences?: Record<string, 'cards' | 'list' | 'disabled' | 'show-with-read'>;
 }
 
-export default function BulkEditModal({ isOpen, onClose, selectedIds, onSuccess, viewPreferences }: BulkEditModalProps) {
+export default function BulkEditModal({ isOpen, onClose, selectedIds, selectedBooks, onSuccess, viewPreferences }: BulkEditModalProps) {
   const [selectedField, setSelectedField] = useState<string>('');
   const [newValue, setNewValue] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
@@ -27,22 +29,66 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, onSuccess,
 
     setIsSaving(true);
     try {
-      const updates: Record<string, any> = { [selectedField]: newValue };
-      
-      // Special handling for rating to ensure it's a number
-      if (selectedField === 'rating') {
-        updates[selectedField] = newValue ? Number(newValue) : null;
-      }
+      if (selectedField === 'status') {
+        const today = new Date().toISOString().split('T')[0];
+        const newStatus = newValue;
 
-      const response = await fetch('/api/books', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedIds, updates }),
-      });
+        // Perform individual updates for intelligent date logic
+        await Promise.all(selectedBooks.map(book => {
+          let updates: Partial<Book> = { status: newStatus as any };
+          const currentStatus = book.status;
 
-      if (response.ok) {
+          if (newStatus === 'Reading') {
+            updates.finished_reading = '';
+            if (currentStatus === 'Backlog' || currentStatus === 'Wishlist' || !book.started_reading) {
+              updates.started_reading = today;
+            }
+          } else if (newStatus === 'Read') {
+            if (currentStatus === 'Backlog' || currentStatus === 'Wishlist') {
+              updates.started_reading = today;
+              updates.finished_reading = today;
+            } else if (currentStatus === 'Reading') {
+              updates.finished_reading = today;
+            } else if (currentStatus === 'Dropped') {
+              if (!book.finished_reading) updates.finished_reading = today;
+            } else {
+              if (!book.finished_reading) updates.finished_reading = today;
+              if (!book.started_reading) updates.started_reading = today;
+            }
+          } else if (newStatus === 'Backlog' || newStatus === 'Wishlist') {
+            if (currentStatus !== 'Dropped') {
+              updates.started_reading = '';
+              updates.finished_reading = '';
+            }
+          }
+
+          return fetch(`/api/books/${book.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+          });
+        }));
+
         onSuccess();
         onClose();
+      } else {
+        const updates: Record<string, any> = { [selectedField]: newValue };
+        
+        // Special handling for rating to ensure it's a number
+        if (selectedField === 'rating') {
+          updates[selectedField] = newValue ? Number(newValue) : null;
+        }
+
+        const response = await fetch('/api/books', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds, updates }),
+        });
+
+        if (response.ok) {
+          onSuccess();
+          onClose();
+        }
       }
     } catch (error) {
       console.error('Failed to bulk update books:', error);
