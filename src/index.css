@@ -69,3 +69,11 @@
 .glass-tzeentch {
   @apply bg-tzeentch-card/40 backdrop-blur-xl border border-tzeentch-cyan/10;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
