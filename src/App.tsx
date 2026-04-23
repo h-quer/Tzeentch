@@ -57,6 +57,12 @@ export default function App() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const fetchAbortController = useRef<AbortController | null>(null);
   
+  // Ref-based state for observer to avoid effect re-runs
+  const scrollStateRef = useRef({ loading, loadingMore, hasMore });
+  useEffect(() => {
+    scrollStateRef.current = { loading, loadingMore, hasMore };
+  }, [loading, loadingMore, hasMore]);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
     return () => clearTimeout(timer);
@@ -221,6 +227,7 @@ export default function App() {
     
     const observer = new IntersectionObserver(
       (entries) => {
+         const { loading, loadingMore, hasMore } = scrollStateRef.current;
          if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
             handleLoadMore();
          }
@@ -233,7 +240,7 @@ export default function App() {
     }
 
     return () => observer.disconnect();
-  }, [viewType, loading, loadingMore, hasMore, books.length]);
+  }, [viewType]); // Only rebind if viewType changes
 
   const handleToggleSelection = (id: number) => {
     setSelectedBookIds(prev => 
@@ -242,7 +249,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col text-tzeentch-text font-sans selection:bg-tzeentch-cyan/30">
+    <div className="h-dvh overflow-hidden flex flex-col text-tzeentch-text font-sans selection:bg-tzeentch-cyan/30">
       {/* Header */}
       <header className="z-10 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4 flex-shrink-0">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
@@ -403,9 +410,9 @@ export default function App() {
               >
                 {viewType === 'cards' ? (
                   <div 
-                    onMouseEnter={(e) => e.currentTarget.focus()}
+                    onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
                     tabIndex={0}
-                    className="flex-1 overflow-y-auto no-scrollbar pb-8 outline-none"
+                    className="flex-1 overflow-y-auto no-scrollbar pb-8 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg outline-none transition-shadow rounded-xl"
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                       {books.map((book) => (
