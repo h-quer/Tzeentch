@@ -740,11 +740,8 @@ async function startServer() {
       }
 
       // Fetch user object to get mediaProgress for accurate state tracking (especially finished books)
-      // This has the exact same payload as /api/me/progress/:id but for all books at once,
-      // eliminating the slow loop over every book.
-      let recentProgressIds = new Set<string>();
-      let mediaProgressMap = new Map<string, any>();
-      
+      // This is now done for ALL sync modes to avoid the O(n) progress loop
+      const progressMap = new Map<string, any>();
       try {
         const meRes = await fetch(`${baseUrl}/api/me`, {
           headers: { 'Authorization': `Bearer ${absApiKey}` }
@@ -753,28 +750,9 @@ async function startServer() {
           const meData = await meRes.json();
           const mediaProgress = meData.user?.mediaProgress || meData.mediaProgress || [];
           
-          const fromTimestamp = syncMode === 'from' && fromDate 
-            ? new Date(fromDate).getTime() + (offset * 60000) 
-            : 0;
-            
           mediaProgress.forEach((p: any) => {
             if (p.libraryItemId) {
-              mediaProgressMap.set(String(p.libraryItemId), p);
-            }
-            
-            if (fromTimestamp > 0) {
-              const toMs = (val: any) => {
-                if (!val) return 0;
-                // If timestamp is in seconds (e.g. < 100 billion), convert to milliseconds
-                if (typeof val === 'number') return val < 100000000000 ? val * 1000 : val;
-                const t = new Date(val).getTime();
-                return isNaN(t) ? 0 : t;
-              };
-              
-              const progressTime = Math.max(toMs(p.updatedAt), toMs(p.lastUpdate), toMs(p.startedAt), toMs(p.finishedAt));
-              if (progressTime >= fromTimestamp && p.libraryItemId) {
-                recentProgressIds.add(String(p.libraryItemId));
-              }
+              progressMap.set(String(p.libraryItemId), p);
             }
           });
         }
@@ -785,7 +763,6 @@ async function startServer() {
       // Filter by date
       if (syncMode === 'from' && fromDate) {
         // Normalize fromDate to the start of the user's local day in UTC
-        // We use the date string directly to avoid timezone shifts from the server's local time
         const fromTimestamp = new Date(fromDate).getTime() + (offset * 60000);
         
         const toMs = (val: any) => {
@@ -796,7 +773,7 @@ async function startServer() {
         };
 
         allItems = allItems.filter(item => {
-          const progress = mediaProgressMap.get(String(item.id)) || item.userProgress || item.progress || {};
+          const progress = progressMap.get(String(item.id)) || item.userProgress || item.progress || {};
           
           const timestamps = [
             toMs(item.updatedAt),
@@ -809,7 +786,7 @@ async function startServer() {
           ];
           
           const latestUpdate = Math.max(...timestamps);
-          return latestUpdate >= fromTimestamp || recentProgressIds.has(String(item.id));
+          return latestUpdate >= fromTimestamp;
         });
       }
 
@@ -820,8 +797,8 @@ async function startServer() {
       for (const item of allItems) {
         const metadata = item.media?.metadata || {};
         
-        // Use the prefetched progress map - highly scalable and reliable
-        let progress: any = mediaProgressMap.get(String(item.id)) || {};
+        // Use the globally fetched progress data instead of per-book requests
+        const progress = progressMap.get(String(item.id)) || item.userProgress || item.progress || {};
 
         const title = metadata.title || 'Unknown Title';
         const author = metadata.authorName || (metadata.authors ? metadata.authors.map((a: any) => a.name).join(', ') : 'Unknown Author');
