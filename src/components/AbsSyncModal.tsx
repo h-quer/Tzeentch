@@ -78,7 +78,7 @@ export default function AbsSyncModal({ config, onClose, onConfigChange, onSyncCo
       setTimeout(() => {
         onSyncComplete();
         onClose();
-      }, 3000);
+      }, 1000);
       
     } catch (error: any) {
       console.error('Sync error:', error);
