@@ -50,6 +50,7 @@ const REVERSE_HEADER_MAP = Object.fromEntries(
 
 // Initialize DB
 const db = new Database(sqlitePath);
+db.pragma('journal_mode = WAL');
 
 // Create essential schema first
 db.exec(`
@@ -424,17 +425,21 @@ export const updateBook = (id: number, updates: Partial<Book>) => {
   const values = fields.map(k => (updates as any)[k] ?? null);
   values.push(id); 
   
-  const stmt = db.prepare(`UPDATE books SET ${setClause} WHERE id = ?`);
-  const result = stmt.run(...values);
+  const updateStmt = db.prepare(`UPDATE books SET ${setClause} WHERE id = ?`);
   
-  if (result.changes > 0) {
-    if ('tags' in updates) {
-      syncTags(id, updates.tags);
+  const transaction = db.transaction(() => {
+    const result = updateStmt.run(...values);
+    if (result.changes > 0) {
+      if ('tags' in updates) {
+        syncTags(id, updates.tags);
+      }
+      cachedTags = null;
+      return true;
     }
-    cachedTags = null;
-    return true;
-  }
-  return false;
+    return false;
+  });
+
+  return transaction();
 };
 
 export const updateBooks = (ids: number[], updates: Partial<Book>) => {
