@@ -125,15 +125,25 @@ const syncTagsStmt = {
   insertLink: db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)')
 };
 
-const syncTags = (bookId: number, tagsString?: string | null) => {
+const syncTags = (bookId: number, tagsString?: string | null, tagCache?: Map<string, number>) => {
   syncTagsStmt.delete.run(bookId);
   if (!tagsString) return;
-  const tags = tagsString.split(',').map(t => t.trim()).filter(Boolean);
+  const tags = Array.from(new Set(tagsString.split(',').map(t => t.trim()).filter(Boolean)));
   for (const tag of tags) {
-    syncTagsStmt.insertTag.run(tag);
-    const idRow = syncTagsStmt.getTagId.get(tag) as { id: number };
-    if (idRow) {
-      syncTagsStmt.insertLink.run(bookId, idRow.id);
+    const normalizedTag = tag.toLowerCase();
+    let tagId = tagCache?.get(normalizedTag);
+    
+    if (!tagId) {
+      syncTagsStmt.insertTag.run(tag);
+      const idRow = syncTagsStmt.getTagId.get(tag) as { id: number };
+      if (idRow) {
+        tagId = idRow.id;
+        tagCache?.set(normalizedTag, tagId);
+      }
+    }
+    
+    if (tagId) {
+      syncTagsStmt.insertLink.run(bookId, tagId);
     }
   }
 };
@@ -414,13 +424,14 @@ export const addBooks = (newBooks: Omit<Book, 'id'>[]) => {
   `);
 
   const insertMany = db.transaction((books) => {
+    const tagCache = new Map<string, number>();
     for (const book of books) {
       const values = firstBookKeys.map(k => (book as any)[k] ?? null);
       const result = insert.run(...values);
       const newId = Number(result.lastInsertRowid);
       addedBooks.push({ ...book, id: newId } as Book);
       if ('tags' in book) {
-        syncTags(newId, book.tags);
+        syncTags(newId, book.tags, tagCache);
       }
     }
   });
@@ -495,6 +506,8 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
   let updated = 0;
 
   const transaction = db.transaction(() => {
+    const tagCache = new Map<string, number>();
+
     // Handle Additions
     if (toAdd.length > 0) {
       const firstBookKeys = Object.keys(toAdd[0]).filter(k => k !== 'id');
@@ -508,7 +521,7 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
         const result = insertStmt.run(...values);
         const newId = Number(result.lastInsertRowid);
         if ('tags' in book) {
-          syncTags(newId, book.tags);
+          syncTags(newId, book.tags, tagCache);
         }
         added++;
       }
@@ -527,7 +540,7 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
       const result = updateStmt.run(...values);
       if (result.changes > 0) {
         if ('tags' in item.updates) {
-          syncTags(item.id, item.updates.tags);
+          syncTags(item.id, item.updates.tags, tagCache);
         }
         updated++;
       }
