@@ -740,18 +740,29 @@ async function startServer() {
       }
 
       // Fetch user object to get mediaProgress for accurate state tracking (especially finished books)
+      // This has the exact same payload as /api/me/progress/:id but for all books at once,
+      // eliminating the slow loop over every book.
       let recentProgressIds = new Set<string>();
-      if (syncMode === 'from' && fromDate) {
-        try {
-          const meRes = await fetch(`${baseUrl}/api/me`, {
-            headers: { 'Authorization': `Bearer ${absApiKey}` }
-          });
-          if (meRes.ok) {
-            const meData = await meRes.json();
-            const mediaProgress = meData.user?.mediaProgress || meData.mediaProgress || [];
+      let mediaProgressMap = new Map<string, any>();
+      
+      try {
+        const meRes = await fetch(`${baseUrl}/api/me`, {
+          headers: { 'Authorization': `Bearer ${absApiKey}` }
+        });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          const mediaProgress = meData.user?.mediaProgress || meData.mediaProgress || [];
+          
+          const fromTimestamp = syncMode === 'from' && fromDate 
+            ? new Date(fromDate).getTime() + (offset * 60000) 
+            : 0;
             
-            const fromTimestamp = new Date(fromDate).getTime() + (offset * 60000);
-            mediaProgress.forEach((p: any) => {
+          mediaProgress.forEach((p: any) => {
+            if (p.libraryItemId) {
+              mediaProgressMap.set(String(p.libraryItemId), p);
+            }
+            
+            if (fromTimestamp > 0) {
               const toMs = (val: any) => {
                 if (!val) return 0;
                 // If timestamp is in seconds (e.g. < 100 billion), convert to milliseconds
@@ -764,11 +775,11 @@ async function startServer() {
               if (progressTime >= fromTimestamp && p.libraryItemId) {
                 recentProgressIds.add(String(p.libraryItemId));
               }
-            });
-          }
-        } catch (err) {
-          console.error('Failed to fetch user progress from /api/me:', err);
+            }
+          });
         }
+      } catch (err) {
+        console.error('Failed to fetch user progress from /api/me:', err);
       }
 
       // Filter by date
@@ -785,7 +796,7 @@ async function startServer() {
         };
 
         allItems = allItems.filter(item => {
-          const progress = item.userProgress || item.progress || {};
+          const progress = mediaProgressMap.get(String(item.id)) || item.userProgress || item.progress || {};
           
           const timestamps = [
             toMs(item.updatedAt),
@@ -809,18 +820,8 @@ async function startServer() {
       for (const item of allItems) {
         const metadata = item.media?.metadata || {};
         
-        // Fetch progress for this specific item for maximum reliability
-        let progress: any = {};
-        try {
-          const progressRes = await fetch(`${baseUrl}/api/me/progress/${item.id}`, {
-            headers: { 'Authorization': `Bearer ${absApiKey}` }
-          });
-          if (progressRes.ok) {
-            progress = await progressRes.json();
-          }
-        } catch (err) {
-          console.error(`Failed to fetch progress for item ${item.id}:`, err);
-        }
+        // Use the prefetched progress map - highly scalable and reliable
+        let progress: any = mediaProgressMap.get(String(item.id)) || {};
 
         const title = metadata.title || 'Unknown Title';
         const author = metadata.authorName || (metadata.authors ? metadata.authors.map((a: any) => a.name).join(', ') : 'Unknown Author');
