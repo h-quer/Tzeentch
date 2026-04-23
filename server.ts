@@ -586,6 +586,9 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
           const filePath = path.join(coversDir, fileName);
           const relativePath = `/covers/${fileName}`;
 
+          await downloadImage(newCoverUrl, filePath);
+          
+          // Image downloaded successfully, safe to delete the old one
           if (oldCoverUrl && oldCoverUrl.startsWith('/covers/')) {
             const oldPath = path.join(__dirname, 'data', oldCoverUrl);
             if (fs.existsSync(oldPath)) {
@@ -593,7 +596,6 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
             }
           }
 
-          await downloadImage(newCoverUrl, filePath);
           updatedData.cover_url = relativePath;
         } catch (e) {
           console.error(`Failed to download cover for book ${book.id}:`, e);
@@ -1012,7 +1014,9 @@ async function startServer() {
         const filePath = path.join(coversDir, fileName);
         const relativePath = `/covers/${fileName}`;
 
-        // Delete old cover if it was local
+        await downloadImage(updates.cover_url, filePath);
+
+        // Delete old cover if it was local, ONLY after successful download
         if (oldBook.cover_url && oldBook.cover_url.startsWith('/covers/')) {
           const oldPath = path.join(__dirname, 'data', oldBook.cover_url);
           if (fs.existsSync(oldPath)) {
@@ -1020,7 +1024,6 @@ async function startServer() {
           }
         }
 
-        await downloadImage(updates.cover_url, filePath);
         updates.cover_url = relativePath;
       } catch (error) {
         console.error('Failed to download cover during patch:', error);
