@@ -411,6 +411,7 @@ const BookListRow: React.FC<BookListRowProps> = React.memo(({ book, onBookClick,
 
 export default function BookList({ books, onBookClick, onUpdate, columns, isMultiSelectMode, selectedBookIds, onToggleSelection, viewPreferences, onLoadMore, hasMore }: BookListProps) {
   const observerTarget = useRef<HTMLTableRowElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!onLoadMore || !hasMore) return;
@@ -432,7 +433,12 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
   }, [onLoadMore, hasMore]);
 
   return (
-    <div className="bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto max-h-[calc(100vh-220px)] relative no-scrollbar">
+    <div 
+      ref={containerRef}
+      onMouseEnter={() => containerRef.current?.focus()}
+      tabIndex={0}
+      className="flex-1 bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto relative no-scrollbar outline-none"
+    >
       <table className="w-full text-left border-collapse">
         <thead className="sticky top-0 z-20 bg-tzeentch-card/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
           <tr className="border-b border-tzeentch-cyan/10">
