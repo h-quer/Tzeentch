@@ -5,7 +5,7 @@ import multer from 'multer';
 import Papa from 'papaparse';
 import fs from 'fs';
 import os from 'os';
-import { getBooks, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv, getStats } from './src/db.js';
+import { getBooks, addBook, addBooks, updateBook, updateBooks, bulkSyncBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv, getStats } from './src/db.js';
 import { Book, SearchResult, BookStatus } from './src/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -707,6 +707,13 @@ async function startServer() {
         return d.toISOString().split('T')[0];
       };
       
+      const toMs = (val: any) => {
+        if (!val) return 0;
+        if (typeof val === 'number') return val < 100000000000 ? val * 1000 : val;
+        const t = new Date(val).getTime();
+        return isNaN(t) ? 0 : t;
+      };
+
       // Fetch libraries
       const librariesRes = await fetch(`${baseUrl}/api/libraries`, {
         headers: { 'Authorization': `Bearer ${absApiKey}` }
@@ -726,7 +733,6 @@ async function startServer() {
             continue;
           }
           
-          // Use include=progress to get progress for all items in the library
           const itemsRes = await fetch(`${baseUrl}/api/libraries/${library.id}/items?include=progress`, {
             headers: { 'Authorization': `Bearer ${absApiKey}` }
           });
@@ -739,9 +745,9 @@ async function startServer() {
         }
       }
 
-      // Fetch user object to get mediaProgress for accurate state tracking (especially finished books)
-      // This is now done for ALL sync modes to avoid the O(n) progress loop
+      // Fetch user progress global map
       const progressMap = new Map<string, any>();
+      let recentProgressIds = new Set<string>();
       try {
         const meRes = await fetch(`${baseUrl}/api/me`, {
           headers: { 'Authorization': `Bearer ${absApiKey}` }
@@ -750,9 +756,19 @@ async function startServer() {
           const meData = await meRes.json();
           const mediaProgress = meData.user?.mediaProgress || meData.mediaProgress || [];
           
+          const fromTimestamp = (syncMode === 'from' && fromDate) ? new Date(fromDate).getTime() + (offset * 60000) : 0;
+
           mediaProgress.forEach((p: any) => {
             if (p.libraryItemId) {
-              progressMap.set(String(p.libraryItemId), p);
+              const idStr = String(p.libraryItemId);
+              progressMap.set(idStr, p);
+
+              if (fromTimestamp) {
+                const progressTime = Math.max(toMs(p.updatedAt), toMs(p.lastUpdate), toMs(p.startedAt), toMs(p.finishedAt));
+                if (progressTime >= fromTimestamp) {
+                  recentProgressIds.add(idStr);
+                }
+              }
             }
           });
         }
@@ -762,19 +778,9 @@ async function startServer() {
 
       // Filter by date
       if (syncMode === 'from' && fromDate) {
-        // Normalize fromDate to the start of the user's local day in UTC
         const fromTimestamp = new Date(fromDate).getTime() + (offset * 60000);
-        
-        const toMs = (val: any) => {
-          if (!val) return 0;
-          if (typeof val === 'number') return val < 100000000000 ? val * 1000 : val;
-          const t = new Date(val).getTime();
-          return isNaN(t) ? 0 : t;
-        };
-
         allItems = allItems.filter(item => {
           const progress = progressMap.get(String(item.id)) || item.userProgress || item.progress || {};
-          
           const timestamps = [
             toMs(item.updatedAt),
             toMs(item.addedAt),
@@ -784,46 +790,46 @@ async function startServer() {
             toMs(progress.finishedAt),
             toMs(item.media?.metadata?.updatedAt)
           ];
-          
           const latestUpdate = Math.max(...timestamps);
-          return latestUpdate >= fromTimestamp;
+          return latestUpdate >= fromTimestamp || recentProgressIds.has(String(item.id));
         });
       }
 
-      const books = getBooks();
-      let updatedCount = 0;
-      let addedCount = 0;
+      // 1. Pre-fetch all books for O(1) lookup
+      const existingBooksResult = getBooks();
+      const bookLookup = new Map<string, Book>();
+      existingBooksResult.forEach(b => {
+        const key = `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`;
+        bookLookup.set(key, b);
+      });
+
+      const toAdd: Omit<Book, 'id'>[] = [];
+      const toUpdate: {id: number, updates: Partial<Book>}[] = [];
 
       for (const item of allItems) {
         const metadata = item.media?.metadata || {};
-        
-        // Use the globally fetched progress data instead of per-book requests
         const progress = progressMap.get(String(item.id)) || item.userProgress || item.progress || {};
-
         const title = metadata.title || 'Unknown Title';
         const author = metadata.authorName || (metadata.authors ? metadata.authors.map((a: any) => a.name).join(', ') : 'Unknown Author');
+        const lookupKey = `${title.toLowerCase()}|${author.toLowerCase()}`;
+        const existingBook = bookLookup.get(lookupKey);
+
         const narrator = metadata.narratorName || (metadata.narrators ? metadata.narrators.map((n: any) => n.name).join(', ') : '');
-        
-        // Series handling
         let series = '';
         let series_number: string | number = '';
         if (metadata.series && metadata.series.length > 0) {
           series = metadata.series[0].name || '';
-          series_number = metadata.series[0].sequence !== undefined && metadata.series[0].sequence !== null ? metadata.series[0].sequence : '';
+          series_number = metadata.series[0].sequence ?? '';
         } else if (metadata.seriesName) {
           series = metadata.seriesName;
-          series_number = metadata.seriesSequence !== undefined && metadata.seriesSequence !== null ? metadata.seriesSequence : '';
+          series_number = metadata.seriesSequence ?? '';
         }
 
-        // Clean up series name if it contains the sequence number (common in some metadata providers)
         if (series) {
           const seriesMatch = series.match(/^(.*?)\s*#(\d+(?:\.\d+)?)$/);
           if (seriesMatch) {
             series = seriesMatch[1].trim();
-            // If we didn't have a sequence number yet, use the one from the name
-            if (series_number === '' || series_number === null || series_number === undefined) {
-              series_number = seriesMatch[2];
-            }
+            if (series_number === '') series_number = seriesMatch[2];
           }
         }
 
@@ -833,133 +839,79 @@ async function startServer() {
         const asin = metadata.asin || '';
         const publisher = metadata.publisher || '';
         
-        // Use only tags (which are located at item.media.tags in ABS), disregard genres. 
-        // Remove commas from tags to prevent parsing issues in CSV.
-        let rawTags = item.media?.tags || [];
-        if (typeof rawTags === 'string') {
-          rawTags = rawTags.split(',');
-        } else if (!Array.isArray(rawTags)) {
-          rawTags = [];
-        }
-        
-        const absTags = rawTags
+        let tagsArr = item.media?.tags || [];
+        if (typeof tagsArr === 'string') tagsArr = tagsArr.split(',');
+        const tags = (Array.isArray(tagsArr) ? tagsArr : [])
           .map((t: any) => String(t).trim().replace(/,/g, ''))
-          .filter((t: string, i: number, self: string[]) => t && self.indexOf(t) === i);
+          .filter((t: string, i: number, self: string[]) => t && self.indexOf(t) === i)
+          .join(', ');
         
-        const tags = absTags.join(', ');
         const page_count = metadata.numPages ? Number(metadata.numPages) : undefined;
-        
-        let started_reading = '';
-        let finished_reading = '';
-        
-        if (progress.startedAt) {
-          started_reading = formatDate(progress.startedAt);
-        }
-        
-        if (progress.finishedAt) {
-          finished_reading = formatDate(progress.finishedAt);
-        } else if (progress.isFinished) {
-          // Fallback if marked finished but no timestamp
-          finished_reading = formatDate(Date.now());
-        }
+        let started_reading = progress.startedAt ? formatDate(progress.startedAt) : '';
+        let finished_reading = progress.finishedAt ? formatDate(progress.finishedAt) : (progress.isFinished ? formatDate(Date.now()) : '');
 
-        // Categorization logic
         let status: BookStatus = 'Backlog';
-        if (started_reading && !finished_reading) {
-          status = 'Reading';
-        } else if (finished_reading) {
-          status = 'Read';
-        }
+        if (started_reading && !finished_reading) status = 'Reading';
+        else if (finished_reading) status = 'Read';
 
         let cover_url = '';
         if (item.id && baseUrl && absApiKey) {
            const coverUrl = `${baseUrl}/api/items/${item.id}/cover`;
            const filename = `abs_${item.id}.jpg`;
            const filePath = path.join(coversDir, filename);
-           try {
-             await downloadImage(coverUrl, filePath, { 'Authorization': `Bearer ${absApiKey}` });
+           // NOTE: Cover download is still async and sequential for now to avoid hammering the server, 
+           // but we only do it if the file doesn't exist or we really need to.
+           if (!fs.existsSync(filePath)) {
+             try {
+               await downloadImage(coverUrl, filePath, { 'Authorization': `Bearer ${absApiKey}` });
+               cover_url = `/covers/${filename}`;
+             } catch (err) {
+               console.error(`Failed to download cover for ${item.id}:`, err);
+             }
+           } else {
              cover_url = `/covers/${filename}`;
-           } catch (err) {
-             console.error(`Failed to download cover for ${item.id}:`, err);
            }
         }
 
-        const existingBook = books.find(b => 
-          (b.title || '').toString().toLowerCase() === title.toLowerCase() && 
-          (b.author || '').toString().toLowerCase() === author.toLowerCase()
-        );
-
         const bookData: Partial<Book> = {
-          title,
-          author,
-          narrator,
-          series,
-          series_number: (series_number !== '' && series_number !== null && series_number !== undefined) ? series_number.toString() : '',
-          published_date,
-          description,
-          isbn,
-          asin,
-          publisher,
-          tags,
-          page_count,
-          started_reading,
-          finished_reading,
-          status,
-          format: 'Audiobook',
-          metadata_source: 'Audiobookshelf'
+          title, author, narrator, series,
+          series_number: (series_number !== '' && series_number !== undefined) ? series_number.toString() : '',
+          published_date, description, isbn, asin, publisher, tags, page_count,
+          started_reading, finished_reading, status,
+          format: 'Audiobook', metadata_source: 'Audiobookshelf'
         };
-
-        if (cover_url) {
-          bookData.cover_url = cover_url;
-        }
+        if (cover_url) bookData.cover_url = cover_url;
 
         if (existingBook) {
-          let updatedData = { ...bookData };
-          
+          let updates = { ...bookData };
           if (overwriteMode === 'empty-only') {
-            for (const key of Object.keys(updatedData) as Array<keyof Book>) {
+            for (const key of Object.keys(updates) as Array<keyof Book>) {
               if (existingBook[key] !== undefined && existingBook[key] !== null && existingBook[key] !== '') {
-                delete updatedData[key];
+                delete (updates as any)[key];
               }
             }
-            // Special case: if we are filling in a finished_reading date, we MUST update status to 'Read'
-            if (updatedData.finished_reading) {
-              updatedData.status = 'Read';
-            } else if (updatedData.started_reading && existingBook.status === 'Backlog') {
-              // If we are filling in started_reading and it was in Backlog, move to Reading
-              updatedData.status = 'Reading';
-            }
+            if (updates.finished_reading) updates.status = 'Read';
+            else if (updates.started_reading && existingBook.status === 'Backlog') updates.status = 'Reading';
           } else if (overwriteMode === 'dates-empty-only') {
-            // Only keep dates if they are empty in the existing book
-            if (existingBook.started_reading) {
-              delete updatedData.started_reading;
-            }
-            if (existingBook.finished_reading) {
-              delete updatedData.finished_reading;
-            }
-
-            // Handle status update based on which dates were actually updated
-            if (updatedData.finished_reading) {
-              updatedData.status = 'Read';
-            } else if (updatedData.started_reading && !existingBook.finished_reading) {
-              updatedData.status = 'Reading';
-            } else {
-              // If no dates were updated, don't touch the status
-              delete updatedData.status;
-            }
+            if (existingBook.started_reading) delete updates.started_reading;
+            if (existingBook.finished_reading) delete updates.finished_reading;
+            if (updates.finished_reading) updates.status = 'Read';
+            else if (updates.started_reading && !existingBook.finished_reading) updates.status = 'Reading';
+            else delete updates.status;
           }
 
-          if (Object.keys(updatedData).length > 0) {
-            updateBook(existingBook.id, updatedData);
-            updatedCount++;
+          if (Object.keys(updates).length > 0) {
+            toUpdate.push({ id: existingBook.id, updates });
           }
         } else {
-          addBook(bookData as Omit<Book, 'id'>);
-          addedCount++;
+          toAdd.push(bookData as Omit<Book, 'id'>);
         }
       }
 
-      res.json({ success: true, added: addedCount, updated: updatedCount });
+      // 4. Perform everything in a single transaction
+      const syncResult = bulkSyncBooks(toAdd, toUpdate);
+
+      res.json({ success: true, added: syncResult.added, updated: syncResult.updated });
     } catch (error: any) {
       console.error('Error syncing with ABS:', error);
       res.status(500).json({ error: error.message || 'Failed to sync with Audiobookshelf' });
