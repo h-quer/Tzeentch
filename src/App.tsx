@@ -377,7 +377,7 @@ export default function App() {
         </div>
  
         {/* Content */}
-        <div className="flex-1 min-h-0 relative pb-24 overflow-hidden">
+        <div className={`flex-1 min-h-0 relative overflow-hidden transition-all duration-300 ${isMultiSelectMode ? 'pb-28' : 'pb-4'}`}>
           <AnimatePresence mode="wait">
             {loading || !uiConfig ? (
               <motion.div 
