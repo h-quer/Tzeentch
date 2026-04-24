@@ -75,7 +75,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-0"
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
         <h3 className="text-[10px] lg:text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-2 lg:mb-4">Items by Category</h3>
         <div className="flex-1 w-full min-h-0">
@@ -100,7 +100,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-0"
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
         <h3 className="text-[10px] lg:text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-2 lg:mb-4">Books vs Audiobooks</h3>
         <div className="flex-1 w-full min-h-0">
@@ -141,7 +141,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-0"
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
         <h3 className="text-[10px] lg:text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-2 lg:mb-4">Top 8 Tags</h3>
         <div className="flex-1 w-full min-h-0">
@@ -162,7 +162,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-0"
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
         <h3 className="text-[10px] lg:text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-2 lg:mb-4">Finished Reading (Last 8 Years)</h3>
         <div className="flex-1 w-full min-h-0">
@@ -183,7 +183,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-0 lg:col-span-2"
+        className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0 lg:col-span-2"
       >
         <h3 className="text-[10px] lg:text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-2 lg:mb-4">Top 8 Authors</h3>
         <div className="flex-1 w-full min-h-0">
