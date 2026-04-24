@@ -414,7 +414,7 @@ export default function App() {
                     tabIndex={0}
                     className="flex-1 overflow-y-auto no-scrollbar pb-8 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg outline-none transition-shadow rounded-xl"
                   >
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                       {books.map((book) => (
                         <BookCard 
                           key={book.id} 
