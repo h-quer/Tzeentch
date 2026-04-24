@@ -118,14 +118,14 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
     const marginClass = `${isFirst ? 'mt-auto' : ''} ${isLast ? '' : 'mb-2'}`;
     switch (field) {
       case 'title':
-        return <h3 key={field} className={`font-bold text-lg leading-tight line-clamp-2 text-tzeentch-cyan group-hover:text-tzeentch-cyan transition-colors duration-500 ${marginClass}`}>{book.title}</h3>;
+        return <h3 key={field} className={`font-bold text-sm sm:text-base leading-tight line-clamp-2 text-tzeentch-cyan group-hover:text-tzeentch-cyan transition-colors duration-500 ${marginClass}`}>{book.title}</h3>;
       case 'author':
-        return <p key={field} className={`text-sm text-tzeentch-text-muted font-medium ${marginClass}`}>{book.author}</p>;
+        return <p key={field} className={`text-[10px] sm:text-xs text-tzeentch-text-muted font-medium ${marginClass}`}>{book.author}</p>;
       case 'narrator':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint italic ${marginClass}`}>Narrator: {book.narrator || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint italic ${marginClass}`}>Narrator: {book.narrator || '—'}</p>;
       case 'series':
         return (
-          <p key={field} className={`text-xs text-tzeentch-cyan/80 font-medium ${marginClass}`}>
+          <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-cyan/80 font-medium ${marginClass}`}>
             Series: {book.series || '—'}
             {book.series && book.series_number && ` #${book.series_number}`}
           </p>
@@ -137,7 +137,7 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star 
                   key={star} 
-                  size={14} 
+                  size={12} 
                   className={star <= (book.rating || 0) ? 'fill-tzeentch-gold text-tzeentch-gold drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'text-tzeentch-text-faint/50'} 
                 />
               ))}
@@ -145,19 +145,19 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
           </div>
         );
       case 'format':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Format: {book.format}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Format: {book.format}</p>;
       case 'status':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Status: {book.status}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Status: {book.status}</p>;
       case 'started_reading':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Started: {book.started_reading || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Started: {book.started_reading || '—'}</p>;
       case 'finished_reading':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Finished: {book.finished_reading || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Finished: {book.finished_reading || '—'}</p>;
       case 'page_count':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Pages: {book.page_count || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Pages: {book.page_count || '—'}</p>;
       case 'published_date':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Published: {book.published_date || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Published: {book.published_date || '—'}</p>;
       case 'publisher':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>Publisher: {book.publisher || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint ${marginClass}`}>Publisher: {book.publisher || '—'}</p>;
       case 'tags':
         if (!book.tags) return <p key={field} className={`text-xs text-tzeentch-text-faint ${marginClass}`}>—</p>;
         const uniqueTags = Array.from(new Set<string>(book.tags.split(',').map(t => t.trim()).filter(Boolean)));
@@ -171,13 +171,13 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
           </div>
         );
       case 'isbn':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint font-mono ${marginClass}`}>ISBN: {book.isbn || book.asin || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint font-mono ${marginClass}`}>ISBN: {book.isbn || book.asin || '—'}</p>;
       case 'description':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint line-clamp-3 ${marginClass}`}>{book.description || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint line-clamp-3 ${marginClass}`}>{book.description || '—'}</p>;
       case 'metadata_source':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint truncate ${marginClass}`}>Source: {book.metadata_source || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint truncate ${marginClass}`}>Source: {book.metadata_source || '—'}</p>;
       case 'notes':
-        return <p key={field} className={`text-xs text-tzeentch-text-faint line-clamp-2 ${marginClass}`}>Notes: {book.notes || '—'}</p>;
+        return <p key={field} className={`text-[9px] sm:text-[10px] text-tzeentch-text-faint line-clamp-2 ${marginClass}`}>Notes: {book.notes || '—'}</p>;
       default:
         return null;
     }
@@ -220,8 +220,8 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
         )}
         
         {/* Format Badge */}
-        <div className="absolute top-3 left-3 px-2 py-1 rounded bg-tzeentch-bg/80 backdrop-blur-md text-tzeentch-cyan text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 border border-tzeentch-cyan/20">
-          {book.format === 'Audiobook' ? <Headphones size={10} /> : <BookIcon size={10} />}
+        <div className="absolute top-2 left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded bg-tzeentch-bg/80 backdrop-blur-md text-tzeentch-cyan text-[7px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 sm:gap-1.5 border border-tzeentch-cyan/20">
+          {book.format === 'Audiobook' ? <Headphones size={8} className="sm:w-[10px]" /> : <BookIcon size={8} className="sm:w-[10px]" />}
           {book.format}
         </div>
 
@@ -252,8 +252,7 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
         </div>
       </div>
 
-      {/* Info */}
-      <div className="p-4 border-t border-tzeentch-cyan/5 flex flex-col flex-1">
+      <div className="p-3 sm:p-4 border-t border-tzeentch-cyan/5 flex flex-col flex-1 min-w-0">
         {fields.map((field, idx) => renderField(field, idx === 0, idx === fields.length - 1))}
       </div>
 
