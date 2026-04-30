@@ -110,8 +110,8 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
                 data={stats.formatData}
                 cx="50%"
                 cy="45%"
-                innerRadius={60}
-                outerRadius={80}
+                innerRadius="40%"
+                outerRadius="70%"
                 paddingAngle={5}
                 dataKey="value"
                 stroke="none"
