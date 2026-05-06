@@ -1,11 +1,124 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Book, BookStatus } from '../types';
-import { Star, Headphones, Book as BookIcon, CheckCircle, MoreHorizontal, BookOpen, Library, Bookmark, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { Star, Headphones, Book as BookIcon, CheckCircle, MoreHorizontal, BookOpen, Library, Bookmark, RefreshCw, Trash2, XCircle, Filter, Search, X, Eraser } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AVAILABLE_FIELDS } from './SettingsModal';
 import RefreshMetadataModal from './RefreshMetadataModal';
 import ManualRefreshModal from './ManualRefreshModal';
 import ConfirmModal from './ConfirmModal';
+
+interface ColumnFilter {
+  type: 'search' | 'empty' | 'not-empty';
+  value: string;
+}
+
+interface FilterPopoverProps {
+  columnId: string;
+  label: string;
+  currentFilter?: ColumnFilter;
+  onApply: (filter: ColumnFilter | null) => void;
+  onClose: () => void;
+}
+
+const FilterPopover: React.FC<FilterPopoverProps> = ({ columnId, label, currentFilter, onApply, onClose }) => {
+  const [searchValue, setSearchValue] = useState(currentFilter?.type === 'search' ? currentFilter.value : '');
+  const [activeType, setActiveType] = useState<'search' | 'empty' | 'not-empty' | null>(currentFilter?.type || null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (activeType === 'search') {
+      inputRef.current?.focus();
+    }
+  }, [activeType]);
+
+  const handleApplySearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (searchValue.trim()) {
+      onApply({ type: 'search', value: searchValue.trim() });
+    } else {
+      onApply(null);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      className="absolute top-full left-0 mt-2 z-50 bg-tzeentch-bg rounded-xl shadow-[0_0_40px_rgba(34,211,238,0.2)] border border-tzeentch-cyan/30 p-4 min-w-[240px] backdrop-blur-xl text-left"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-[10px] font-bold text-tzeentch-cyan uppercase tracking-widest flex items-center gap-2">
+          <Filter size={12} /> Filter {label}
+        </h4>
+        <button onClick={onClose} className="text-tzeentch-cyan/40 hover:text-tzeentch-cyan transition-colors">
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {/* Search Option */}
+        <form onSubmit={handleApplySearch} className="space-y-2">
+          <div className="relative group">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tzeentch-cyan/40" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Search term..."
+              value={searchValue}
+              onChange={(e) => {
+                setSearchValue(e.target.value);
+                setActiveType('search');
+              }}
+              onFocus={() => setActiveType('search')}
+              className="w-full bg-tzeentch-card/50 border border-tzeentch-cyan/20 rounded-lg py-2 pl-9 pr-3 text-xs text-tzeentch-text placeholder-tzeentch-cyan/30 focus:outline-none focus:border-tzeentch-cyan/50 transition-all font-medium"
+            />
+          </div>
+          {activeType === 'search' && (
+            <button
+              type="submit"
+              className="w-full py-2 bg-tzeentch-cyan text-tzeentch-bg text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-tzeentch-cyan/80 transition-all"
+            >
+              Apply Filter
+            </button>
+          )}
+        </form>
+
+        <div className="h-px bg-tzeentch-cyan/10" />
+
+        {/* Quick Filters */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => onApply({ type: 'empty', value: '' })}
+            className={`py-2 px-3 rounded-lg border text-[10px] font-bold uppercase tracking-widest transition-all ${currentFilter?.type === 'empty' ? 'bg-tzeentch-cyan text-tzeentch-bg border-tzeentch-cyan' : 'border-tzeentch-cyan/20 text-tzeentch-cyan/60 hover:text-tzeentch-cyan hover:bg-tzeentch-cyan/10'}`}
+          >
+            Empty
+          </button>
+          <button
+            onClick={() => onApply({ type: 'not-empty', value: '' })}
+            className={`py-2 px-3 rounded-lg border text-[10px] font-bold uppercase tracking-widest transition-all ${currentFilter?.type === 'not-empty' ? 'bg-tzeentch-cyan text-tzeentch-bg border-tzeentch-cyan' : 'border-tzeentch-cyan/20 text-tzeentch-cyan/60 hover:text-tzeentch-cyan hover:bg-tzeentch-cyan/10'}`}
+          >
+            Not Empty
+          </button>
+        </div>
+
+        {currentFilter && (
+          <button
+            onClick={() => {
+              onApply(null);
+              setSearchValue('');
+              setActiveType(null);
+            }}
+            className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-bold text-tzeentch-magenta/70 hover:text-tzeentch-magenta uppercase tracking-widest transition-all"
+          >
+            <Eraser size={12} /> Clear Filter
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 
 interface BookListProps {
   books: Book[];
@@ -410,8 +523,31 @@ const BookListRow: React.FC<BookListRowProps> = React.memo(({ book, onBookClick,
 });
 
 export default function BookList({ books, onBookClick, onUpdate, columns, isMultiSelectMode, selectedBookIds, onToggleSelection, viewPreferences, onLoadMore, hasMore }: BookListProps) {
+  const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({});
+  const [activeFilterPopover, setActiveFilterPopover] = useState<string | null>(null);
+  
   const observerTarget = useRef<HTMLTableRowElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const filteredBooks = useMemo(() => {
+    return books.filter(book => {
+      return (Object.entries(columnFilters) as [string, ColumnFilter][]).every(([col, filter]) => {
+        const value = (book as any)[col];
+        const stringValue = value === null || value === undefined ? '' : String(value).toLowerCase();
+
+        if (filter.type === 'empty') {
+          return stringValue === '';
+        }
+        if (filter.type === 'not-empty') {
+          return stringValue !== '';
+        }
+        if (filter.type === 'search') {
+          return stringValue.includes(filter.value.toLowerCase());
+        }
+        return true;
+      });
+    });
+  }, [books, columnFilters]);
 
   // Ref for observer to track state without re-binding
   const scrollStateRef = useRef({ hasMore });
@@ -439,6 +575,19 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
     return () => observer.disconnect();
   }, [onLoadMore]);
 
+  const handleApplyFilter = (col: string, filter: ColumnFilter | null) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      if (filter) {
+        next[col] = filter;
+      } else {
+        delete next[col];
+      }
+      return next;
+    });
+    setActiveFilterPopover(null);
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -454,9 +603,38 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
             )}
             {columns.map(col => {
               const fieldDef = AVAILABLE_FIELDS.find(f => f.id === col);
+              const label = fieldDef?.label || col;
+              const hasFilter = !!columnFilters[col];
+
               return (
-                <th key={col} className="px-4 py-3 text-[10px] font-bold text-tzeentch-cyan/40 uppercase tracking-[0.1em]">
-                  {fieldDef?.label || col}
+                <th key={col} className="px-4 py-3 text-[10px] font-bold text-tzeentch-cyan/40 uppercase tracking-[0.1em] relative">
+                  <div className="flex items-center gap-2">
+                    <span>{label}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveFilterPopover(activeFilterPopover === col ? null : col);
+                      }}
+                      className={`p-1 rounded transition-colors hover:bg-tzeentch-cyan/10 ${hasFilter ? 'text-tzeentch-cyan' : 'text-tzeentch-cyan/20'} hover:text-tzeentch-cyan`}
+                    >
+                      <Filter size={10} className={hasFilter ? 'fill-tzeentch-cyan/20' : ''} />
+                    </button>
+                  </div>
+                  
+                  <AnimatePresence>
+                    {activeFilterPopover === col && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setActiveFilterPopover(null)} />
+                        <FilterPopover
+                          columnId={col}
+                          label={label}
+                          currentFilter={columnFilters[col]}
+                          onApply={(f) => handleApplyFilter(col, f)}
+                          onClose={() => setActiveFilterPopover(null)}
+                        />
+                      </>
+                    )}
+                  </AnimatePresence>
                 </th>
               );
             })}
@@ -466,7 +644,7 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
           </tr>
         </thead>
         <tbody>
-          {books.map((book) => (
+          {filteredBooks.map((book) => (
             <BookListRow 
               key={book.id}
               book={book}
@@ -479,10 +657,26 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
               viewPreferences={viewPreferences}
             />
           ))}
-          {hasMore && (
+          {hasMore && filteredBooks.length > 0 && (
             <tr ref={observerTarget}>
               <td colSpan={columns.length + 2} className="h-20 text-center">
                 <div className="w-6 h-6 border-2 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin mx-auto"></div>
+              </td>
+            </tr>
+          )}
+          {filteredBooks.length === 0 && (
+            <tr>
+              <td colSpan={columns.length + 2} className="py-20 text-center">
+                <div className="flex flex-col items-center gap-3 opacity-40">
+                  <XCircle size={32} className="text-tzeentch-cyan" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan">No matching tomes found</p>
+                  <button 
+                    onClick={() => setColumnFilters({})}
+                    className="text-[10px] font-bold text-tzeentch-cyan hover:underline uppercase tracking-[0.2em]"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
               </td>
             </tr>
           )}
