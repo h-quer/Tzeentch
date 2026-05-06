@@ -148,6 +148,13 @@ const syncTags = (bookId: number, tagsString?: string | null, tagCache?: Map<str
   }
 };
 
+const ensureValidRating = (rating: any): number | null => {
+  if (rating === null || rating === undefined || rating === '') return null;
+  const r = Number(rating);
+  if (isNaN(r) || r < 1 || r > 5) return null;
+  return r;
+};
+
 // Migration Logic
 const rowCount = db.prepare('SELECT COUNT(*) as count FROM books').get() as { count: number };
 if (rowCount.count === 0 && fs.existsSync(csvPath)) {
@@ -391,7 +398,12 @@ export const getBookById = (id: number) => {
 };
 
 export const addBook = (book: Omit<Book, 'id'>) => {
-  const fields = Object.keys(book).filter(k => k !== 'id');
+  const normalizedBook = { ...book };
+  if ('rating' in normalizedBook) {
+    normalizedBook.rating = ensureValidRating(normalizedBook.rating) as any;
+  }
+  
+  const fields = Object.keys(normalizedBook).filter(k => k !== 'id');
   if (fields.length === 0) {
      const stmt = db.prepare('INSERT INTO books DEFAULT VALUES');
      const r = stmt.run();
@@ -401,12 +413,12 @@ export const addBook = (book: Omit<Book, 'id'>) => {
   const placeholders = fields.map(() => '?').join(', ');
   
   const stmt = db.prepare(`INSERT INTO books (${fields.join(', ')}) VALUES (${placeholders})`);
-  const values = fields.map(k => (book as any)[k] ?? null);
+  const values = fields.map(k => (normalizedBook as any)[k] ?? null);
   
   const result = stmt.run(...values);
   const newId = Number(result.lastInsertRowid);
-  if ('tags' in book) {
-    syncTags(newId, book.tags);
+  if ('tags' in normalizedBook) {
+    syncTags(newId, normalizedBook.tags);
   }
   cachedTags = null;
   return newId;
@@ -415,7 +427,12 @@ export const addBook = (book: Omit<Book, 'id'>) => {
 export const addBooks = (newBooks: Omit<Book, 'id'>[]) => {
   if (newBooks.length === 0) return [];
   
-  const firstBookKeys = Object.keys(newBooks[0]).filter(k => k !== 'id');
+  const normalizedBooks = newBooks.map(book => ({
+    ...book,
+    rating: ensureValidRating(book.rating)
+  }));
+  
+  const firstBookKeys = Object.keys(normalizedBooks[0]).filter(k => k !== 'id');
   const addedBooks: Book[] = [];
   
   const insert = db.prepare(`
@@ -436,17 +453,22 @@ export const addBooks = (newBooks: Omit<Book, 'id'>[]) => {
     }
   });
 
-  insertMany(newBooks);
+  insertMany(normalizedBooks);
   cachedTags = null;
   return addedBooks;
 };
 
 export const updateBook = (id: number, updates: Partial<Book>) => {
-  const fields = Object.keys(updates).filter(k => k !== 'id');
+  const normalizedUpdates = { ...updates };
+  if ('rating' in normalizedUpdates) {
+    normalizedUpdates.rating = ensureValidRating(normalizedUpdates.rating) as any;
+  }
+  
+  const fields = Object.keys(normalizedUpdates).filter(k => k !== 'id');
   if (fields.length === 0) return false;
   
   const setClause = fields.map(field => `${field} = ?`).join(', ');
-  const values = fields.map(k => (updates as any)[k] ?? null);
+  const values = fields.map(k => (normalizedUpdates as any)[k] ?? null);
   values.push(id); 
   
   const updateStmt = db.prepare(`UPDATE books SET ${setClause} WHERE id = ?`);
@@ -454,8 +476,8 @@ export const updateBook = (id: number, updates: Partial<Book>) => {
   const transaction = db.transaction(() => {
     const result = updateStmt.run(...values);
     if (result.changes > 0) {
-      if ('tags' in updates) {
-        syncTags(id, updates.tags);
+      if ('tags' in normalizedUpdates) {
+        syncTags(id, (normalizedUpdates as any).tags);
       }
       cachedTags = null;
       return true;
@@ -469,11 +491,16 @@ export const updateBook = (id: number, updates: Partial<Book>) => {
 export const updateBooks = (ids: number[], updates: Partial<Book>) => {
   if (ids.length === 0) return false;
   
-  const fields = Object.keys(updates).filter(k => k !== 'id');
+  const normalizedUpdates = { ...updates };
+  if ('rating' in normalizedUpdates) {
+    normalizedUpdates.rating = ensureValidRating(normalizedUpdates.rating) as any;
+  }
+  
+  const fields = Object.keys(normalizedUpdates).filter(k => k !== 'id');
   if (fields.length === 0) return false;
   
   const setClause = fields.map(field => `${field} = ?`).join(', ');
-  const baseValues = fields.map(k => (updates as any)[k] ?? null);
+  const baseValues = fields.map(k => (normalizedUpdates as any)[k] ?? null);
   
   const stmt = db.prepare(`UPDATE books SET ${setClause} WHERE id = ?`);
   
@@ -482,8 +509,8 @@ export const updateBooks = (ids: number[], updates: Partial<Book>) => {
     for (const id of idsList) {
       const result = stmt.run(...baseValues, id);
       changes += result.changes;
-      if (result.changes > 0 && 'tags' in updates) {
-        syncTags(id, updates.tags);
+      if (result.changes > 0 && 'tags' in normalizedUpdates) {
+        syncTags(id, (normalizedUpdates as any).tags);
       }
     }
   });
@@ -510,13 +537,18 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
 
     // Handle Additions
     if (toAdd.length > 0) {
-      const firstBookKeys = Object.keys(toAdd[0]).filter(k => k !== 'id');
+      const normalizedToAdd = toAdd.map(b => ({
+        ...b,
+        rating: ensureValidRating(b.rating)
+      }));
+      
+      const firstBookKeys = Object.keys(normalizedToAdd[0]).filter(k => k !== 'id');
       const insertStmt = db.prepare(`
         INSERT INTO books (${firstBookKeys.join(', ')}) 
         VALUES (${firstBookKeys.map(() => '?').join(', ')})
       `);
 
-      for (const book of toAdd) {
+      for (const book of normalizedToAdd) {
         const values = firstBookKeys.map(k => (book as any)[k] ?? null);
         const result = insertStmt.run(...values);
         const newId = Number(result.lastInsertRowid);
@@ -529,18 +561,23 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
 
     // Handle Updates
     for (const item of toUpdate) {
-      const fields = Object.keys(item.updates).filter(k => k !== 'id');
+      const normalizedUpdates = { ...item.updates };
+      if ('rating' in normalizedUpdates) {
+        normalizedUpdates.rating = ensureValidRating(normalizedUpdates.rating) as any;
+      }
+      
+      const fields = Object.keys(normalizedUpdates).filter(k => k !== 'id');
       if (fields.length === 0) continue;
 
       const setClause = fields.map(field => `${field} = ?`).join(', ');
-      const values = fields.map(k => (item.updates as any)[k] ?? null);
+      const values = fields.map(k => (normalizedUpdates as any)[k] ?? null);
       values.push(item.id);
 
       const updateStmt = db.prepare(`UPDATE books SET ${setClause} WHERE id = ?`);
       const result = updateStmt.run(...values);
       if (result.changes > 0) {
-        if ('tags' in item.updates) {
-          syncTags(item.id, item.updates.tags, tagCache);
+        if ('tags' in normalizedUpdates) {
+          syncTags(item.id, (normalizedUpdates as any).tags, tagCache);
         }
         updated++;
       }
