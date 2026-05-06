@@ -146,7 +146,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
       cover_url: selectedBook.cover_url,
       status,
       format,
-      rating,
+      rating: rating > 0 ? rating : undefined,
       started_reading: startedReading || undefined,
       finished_reading: finishedReading || undefined,
       description: selectedBook.description,
