@@ -106,7 +106,20 @@ export default function App() {
       const response = await fetch(`/api/books?status=${activeTab}${limit}${offsetParam}${sortParam}${searchParam}${includeDropped}`, {
         signal: currentAbortController.signal
       });
-      data = await response.json();
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error (${response.status}): ${errorText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Expected JSON but received non-JSON response:', text);
+        throw new Error('Server returned non-JSON response');
+      }
       
       if (options.reset) {
         setBooks(data);
