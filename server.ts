@@ -969,31 +969,35 @@ async function startServer() {
   });
 
   app.post('/api/books', async (req, res) => {
-    const book: Book = req.body;
-    
-    const id = addBook(book);
-    
-    if (book.cover_url && book.cover_url.startsWith('http')) {
-      try {
-        const url = new URL(book.cover_url);
-        const ext = path.extname(url.pathname) || '.jpg';
-        const fileName = `cover_${id}_${Date.now()}${ext}`;
-        const filePath = path.join(coversDir, fileName);
-        await downloadImage(book.cover_url, filePath);
-        
-        // Update book with local cover URL
-        updateBook(id, { cover_url: `/covers/${fileName}` });
-      } catch (error) {
-        console.error('Failed to download cover:', error);
+    try {
+      const book: Book = req.body;
+      const id = addBook(book);
+      
+      if (book.cover_url && book.cover_url.startsWith('http')) {
+        try {
+          const url = new URL(book.cover_url);
+          const ext = path.extname(url.pathname) || '.jpg';
+          const fileName = `cover_${id}_${Date.now()}${ext}`;
+          const filePath = path.join(coversDir, fileName);
+          await downloadImage(book.cover_url, filePath);
+          
+          updateBook(id, { cover_url: `/covers/${fileName}` });
+        } catch (error) {
+          console.error('Failed to download cover:', error);
+        }
       }
+      
+      const updatedBook = getBookById(id);
+      res.json(updatedBook);
+    } catch (error: any) {
+      console.error('Error adding book:', error);
+      res.status(500).json({ error: error.message || 'Failed to add book' });
     }
-    
-    const updatedBook = getBookById(id);
-    res.json(updatedBook);
   });
 
   app.patch('/api/books/:id', async (req, res) => {
-    const { id } = req.params;
+    try {
+      const { id } = req.params;
     const bookId = Number(id);
     const oldBook = getBookById(bookId);
     
@@ -1058,46 +1062,32 @@ async function startServer() {
     }
 
     res.json({ success: true, book: updatedBook });
+    } catch (error: any) {
+      console.error('Error updating book:', error);
+      res.status(500).json({ error: error.message || 'Failed to update book' });
+    }
   });
 
   app.patch('/api/books', (req, res) => {
-    const { ids, updates } = req.body;
-    if (!Array.isArray(ids)) {
-      return res.status(400).json({ error: 'ids must be an array' });
+    try {
+      const { ids, updates } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: 'ids must be an array' });
+      }
+      updateBooks(ids, updates);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error bulk updating books:', error);
+      res.status(500).json({ error: error.message || 'Failed to bulk update books' });
     }
-    updateBooks(ids, updates);
-    res.json({ success: true });
   });
 
   app.delete('/api/books/:id', (req, res) => {
-    const { id } = req.params;
-    const bookId = Number(id);
-    const book = getBookById(bookId);
-    
-    if (book && book.cover_url && book.cover_url.startsWith('/covers/')) {
-      const coverPath = path.join(__dirname, 'data', book.cover_url);
-      if (fs.existsSync(coverPath)) {
-        try {
-          fs.unlinkSync(coverPath);
-        } catch (e) {
-          console.error(`Failed to delete cover image for book ${bookId}:`, e);
-        }
-      }
-    }
-    
-    deleteBook(bookId);
-    res.json({ success: true });
-  });
-
-  app.delete('/api/books', (req, res) => {
-    const { ids } = req.body;
-    if (!Array.isArray(ids)) {
-      return res.status(400).json({ error: 'ids must be an array' });
-    }
-    
-    ids.forEach(id => {
+    try {
+      const { id } = req.params;
       const bookId = Number(id);
       const book = getBookById(bookId);
+      
       if (book && book.cover_url && book.cover_url.startsWith('/covers/')) {
         const coverPath = path.join(__dirname, 'data', book.cover_url);
         if (fs.existsSync(coverPath)) {
@@ -1108,10 +1098,43 @@ async function startServer() {
           }
         }
       }
-    });
-    
-    deleteBooks(ids);
-    res.json({ success: true });
+      
+      deleteBook(bookId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting book:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete book' });
+    }
+  });
+
+  app.delete('/api/books', (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: 'ids must be an array' });
+      }
+      
+      ids.forEach(id => {
+        const bookId = Number(id);
+        const book = getBookById(bookId);
+        if (book && book.cover_url && book.cover_url.startsWith('/covers/')) {
+          const coverPath = path.join(__dirname, 'data', book.cover_url);
+          if (fs.existsSync(coverPath)) {
+            try {
+              fs.unlinkSync(coverPath);
+            } catch (e) {
+              console.error(`Failed to delete cover image for book ${bookId}:`, e);
+            }
+          }
+        }
+      });
+      
+      deleteBooks(ids);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error bulk deleting books:', error);
+      res.status(500).json({ error: error.message || 'Failed to bulk delete books' });
+    }
   });
 
   app.get('/api/export', (req, res) => {
