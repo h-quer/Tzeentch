@@ -85,6 +85,7 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
     try {
       const bookToSave = {
         ...editedBook,
+        rating: editedBook.rating && editedBook.rating > 0 ? editedBook.rating : null,
         tags: selectedTags.join(', ')
       };
       const response = await fetch(`/api/books/${book.id}`, {
