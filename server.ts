@@ -5,7 +5,7 @@ import multer from 'multer';
 import Papa from 'papaparse';
 import fs from 'fs';
 import os from 'os';
-import { getBooks, addBook, addBooks, updateBook, updateBooks, bulkSyncBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv, getStats } from './src/db.js';
+import { getBooks, globalSearch, addBook, addBooks, updateBook, updateBooks, bulkSyncBooks, deleteBook, deleteBooks, getBookById, getTags, exportDbToCsv, getStats } from './src/db.js';
 import { Book, SearchResult, BookStatus } from './src/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -70,79 +70,42 @@ setInterval(() => {
 }, 1000 * 60 * 15); // Every 15 minutes
 
 let googleRequestQueue: Promise<any> = Promise.resolve();
-const MIN_GAP = 1000; // 1 second gap between requests
+const MIN_GAP = 3000; // 3 seconds gap between requests (conservative for unauthenticated)
 
-async function googleBooksFetch(url: string, retries = 7, delay = 2000, signal?: AbortSignal): Promise<Response> {
+async function googleBooksFetch(url: string, signal?: AbortSignal): Promise<Response> {
   return new Promise((resolve, reject) => {
     googleRequestQueue = googleRequestQueue.then(async () => {
       if (signal?.aborted) {
         throw new Error('Aborted');
       }
-      let lastResponse: Response | null = null;
-      for (let i = 0; i < retries; i++) {
-        if (signal?.aborted) {
-          throw new Error('Aborted');
+      
+      try {
+        const response = await fetch(url, {
+          signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Referer': 'https://books.google.com/'
+          }
+        });
+        
+        // Always wait MIN_GAP before letting next request through
+        await new Promise(r => setTimeout(r, MIN_GAP));
+        return response;
+      } catch (e: any) {
+        if (e.name === 'AbortError' || e.message === 'Aborted') {
+          throw e;
         }
-        try {
-          const response = await fetch(url, {
-            signal,
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-              'Referer': 'https://books.google.com/'
-            }
-          });
-          
-          if (response.status !== 429) {
-            // Success or non-429 error, wait a bit before next request in queue
-            await new Promise(r => setTimeout(r, MIN_GAP));
-            return response;
-          }
-          
-          lastResponse = response;
-          // Exponential backoff with jitter
-          const jitter = Math.random() * 1000;
-          const waitTime = (delay * Math.pow(2, i)) + jitter;
-          console.warn(`[Google Books] Rate limited (429). Attempt ${i + 1}/${retries}. Waiting ${Math.round(waitTime)}ms...`);
-          
-          await new Promise<void>((r, rej) => {
-            if (signal?.aborted) return rej(new Error('Aborted'));
-            const timeout = setTimeout(r, waitTime);
-            if (signal) {
-              signal.addEventListener('abort', () => {
-                clearTimeout(timeout);
-                rej(new Error('Aborted'));
-              }, { once: true });
-            }
-          });
-        } catch (e: any) {
-          if (e.name === 'AbortError' || e.message === 'Aborted') {
-            throw e;
-          }
-          console.error(`[Google Books] Fetch error:`, e);
-          if (i === retries - 1) {
-             throw e;
-          }
-          await new Promise<void>((r, rej) => {
-            if (signal?.aborted) return rej(new Error('Aborted'));
-            const timeout = setTimeout(r, delay + Math.random() * 500);
-            if (signal) {
-              signal.addEventListener('abort', () => {
-                clearTimeout(timeout);
-                rej(new Error('Aborted'));
-              }, { once: true });
-            }
-          });
-        }
+        console.error(`[Google Books] Fetch error:`, e);
+        // Wait even on error to protect the queue
+        await new Promise(r => setTimeout(r, MIN_GAP));
+        throw e;
       }
-      // If we exhausted retries, still wait MIN_GAP before letting next request through
-      await new Promise(r => setTimeout(r, MIN_GAP));
-      return lastResponse!;
     }).then(resolve).catch((err) => {
       if (err.name === 'AbortError' || err.message === 'Aborted') {
         reject(err);
       } else {
-        // Return a mock 500 response if everything fails
-        console.error(`[Google Books] Queue execution failed:`, err);
+        // Return a 500 response if it failed
+        console.error(`[Google Books] Request failed:`, err);
         resolve(new Response(JSON.stringify({ error: err.message }), { status: 500 }));
       }
     });
@@ -286,10 +249,14 @@ async function fetchCoverUrl(title: string, author: string, isbn?: string, goodr
     console.log(`[Google Books] Fetching cover with URL: https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
     let res = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
     
-    if (!res.ok) {
-      console.error(`[Google Books] Cover fetch API error (${res.status})`);
-      return undefined;
-    }
+      if (!res.ok) {
+        if (res.status === 429) {
+          console.warn(`[Google Books] Rate limited (429) during cover fetch.`);
+        } else {
+          console.error(`[Google Books] Cover fetch API error (${res.status})`);
+        }
+        return undefined;
+      }
 
     let data = await res.json();
     
@@ -379,6 +346,10 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
       let response = await googleBooksFetch(url);
       
       if (!response.ok) {
+        if (response.status === 429) {
+          console.warn(`[Google Books] Rate limited (429) during metadata refresh.`);
+          return { success: false, error: 'Rate limited by Google Books API. Please try again later.' };
+        }
         const errorText = await response.text();
         console.error(`[Google Books] Metadata API error (${response.status}): ${errorText}`);
         return { success: false, error: `Google Books API returned ${response.status}` };
@@ -464,6 +435,10 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
       else if (book.asin) query = book.asin;
       
       let response = await fetch(`https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(query)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=1`);
+      if (!response.ok) {
+        console.error(`[Audible] API error (${response.status})`);
+        return { success: false, error: `Audible API returned ${response.status}` };
+      }
       let data = await response.json();
       
       if ((!data.products || data.products.length === 0) && !asin && !book.asin) {
@@ -471,7 +446,9 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
         if (surname !== book.author) {
           query = `${book.title} ${surname}`;
           response = await fetch(`https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(query)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=1`);
-          data = await response.json();
+          if (response.ok) {
+            data = await response.json();
+          }
         }
       }
 
@@ -516,6 +493,10 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
     } else if (provider === 'goodreads') {
       let query = `${book.title} ${book.author}`;
       let response = await fetch(`https://www.goodreads.com/book/auto_complete?format=json&q=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        console.error(`[Goodreads] API error (${response.status})`);
+        return { success: false, error: `Goodreads API returned ${response.status}` };
+      }
       let data = await response.json();
       
       if (!data || data.length === 0) {
@@ -523,7 +504,9 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
         if (surname !== book.author) {
           query = `${book.title} ${surname}`;
           response = await fetch(`https://www.goodreads.com/book/auto_complete?format=json&q=${encodeURIComponent(query)}`);
-          data = await response.json();
+          if (response.ok) {
+            data = await response.json();
+          }
         }
       }
 
@@ -924,7 +907,6 @@ async function startServer() {
   app.get('/api/books', (req, res) => {
     try {
       const status = req.query.status as string;
-      const search = req.query.search as string;
       const tag = req.query.tag as string;
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
@@ -940,7 +922,6 @@ async function startServer() {
 
       const books = getBooks({
         statuses: statuses.length > 0 ? statuses : undefined,
-        search,
         tag,
         sortFields,
         limit,
@@ -1177,6 +1158,36 @@ async function startServer() {
     res.json({ success: true, results });
   });
 
+  app.get('/api/metadata/enrich', async (req, res) => {
+    const { source, url } = req.query;
+    if (!url || typeof url !== 'string') return res.status(400).json({ error: 'URL required' });
+
+    try {
+      if (source === 'goodreads') {
+        const details = await fetchGoodreadsDetails(url);
+        return res.json(details || {});
+      }
+      res.status(400).json({ error: 'Unsupported source' });
+    } catch (error) {
+      console.error('Enrichment error:', error);
+      res.status(500).json({ error: 'Failed to enrich metadata' });
+    }
+  });
+
+  app.get('/api/search/global', (req, res) => {
+    try {
+      const q = req.query.q as string;
+      if (!q) {
+        return res.json([]);
+      }
+      const results = globalSearch(q, 10);
+      res.json(results);
+    } catch (error) {
+      console.error('Global search error:', error);
+      res.status(500).json({ error: 'Failed to perform global search' });
+    }
+  });
+
   // Search API (Supports multiple sources)
   app.get('/api/search', async (req, res) => {
     const { q, source = 'google' } = req.query;
@@ -1199,12 +1210,15 @@ async function startServer() {
         }
 
         console.log(`[Google Books] Searching for: ${q}`);
-        let response = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q as string)}&maxResults=20`, 7, 2000, abortController.signal);
+        let response = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q as string)}&maxResults=20`, abortController.signal);
         
         if (!response.ok) {
+          if (response.status === 429) {
+            console.warn(`[Google Books] Rate limited (429) during search.`);
+            return res.status(429).json({ error: 'Book search is temporarily rate-limited. Please wait a few minutes and try again.' });
+          }
           const errorText = await response.text();
           console.error(`[Google Books] Search API error (${response.status}): ${errorText}`);
-          // Return empty array on error to prevent frontend crash, but log the error
           return res.json([]);
         }
 
@@ -1247,6 +1261,12 @@ async function startServer() {
         const response = await fetch(`https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(q as string)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=10`, {
           signal: abortController.signal
         });
+        
+        if (!response.ok) {
+          console.error(`[Audible] Search API error (${response.status})`);
+          return res.status(response.status).json({ error: 'Audible search failed' });
+        }
+        
         const data = await response.json();
         
         results = (data.products || []).map((product: any) => {
@@ -1292,6 +1312,12 @@ async function startServer() {
         const response = await fetch(`https://www.goodreads.com/book/auto_complete?format=json&q=${encodeURIComponent(q as string)}`, {
           signal: abortController.signal
         });
+        
+        if (!response.ok) {
+          console.error(`[Goodreads] Search API error (${response.status})`);
+          return res.status(response.status).json({ error: 'Goodreads search failed' });
+        }
+        
         const data = await response.json();
         
         const rawResults = data.map((item: any) => {
