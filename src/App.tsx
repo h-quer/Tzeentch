@@ -20,6 +20,8 @@ import RefreshMetadataModal from './components/RefreshMetadataModal';
 import ManualRefreshModal from './components/ManualRefreshModal';
 import AbsSyncModal from './components/AbsSyncModal';
 
+import GlobalSearch from './components/GlobalSearch';
+
 type TabType = BookStatus | 'Overview';
 
 const TABS: { id: TabType; label: string; icon: any }[] = [
@@ -44,8 +46,6 @@ export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedBookIds, setSelectedBookIds] = useState<number[]>([]);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
@@ -62,11 +62,6 @@ export default function App() {
   useEffect(() => {
     scrollStateRef.current = { loading, loadingMore, hasMore };
   }, [loading, loadingMore, hasMore]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const fetchBooks = async (options: { reset?: boolean } = { reset: true }) => {
     // Cancel any ongoing fetch to avoid race condition where an older request overwrites a newer one's state
@@ -100,10 +95,9 @@ export default function App() {
         ? `&sort=${encodeURIComponent(JSON.stringify(uiConfig.sortFields))}` 
         : '';
         
-      const searchParam = debouncedSearchQuery ? `&search=${encodeURIComponent(debouncedSearchQuery)}` : '';
       const includeDropped = uiConfig?.viewPreferences?.['Dropped'] === 'show-with-read' ? '&includeDropped=true' : '';
 
-      const response = await fetch(`/api/books?status=${activeTab}${limit}${offsetParam}${sortParam}${searchParam}${includeDropped}`, {
+      const response = await fetch(`/api/books?status=${activeTab}${limit}${offsetParam}${sortParam}${includeDropped}`, {
         signal: currentAbortController.signal
       });
 
@@ -151,8 +145,10 @@ export default function App() {
   const fetchUIConfig = async () => {
     try {
       const response = await fetch('/api/ui-config');
-      const data = await response.json();
-      setUiConfig(data);
+      if (response.ok) {
+        const data = await response.json();
+        setUiConfig(data);
+      }
     } catch (error) {
       console.error('Failed to fetch UI config:', error);
     }
@@ -161,9 +157,11 @@ export default function App() {
   const fetchInitialTab = async () => {
     try {
       const res = await fetch('/api/last-active-tab');
-      const data = await res.json();
-      if (data.lastActiveTab) {
-        setActiveTab(data.lastActiveTab);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.lastActiveTab) {
+          setActiveTab(data.lastActiveTab);
+        }
       }
     } catch (e) {}
   };
@@ -214,13 +212,13 @@ export default function App() {
     }
   }, [uiConfig?.theme]);
 
-  // Fetch whenever config or search changes
+  // Fetch whenever config or active tab changes
   useEffect(() => {
     // Only fetch if config is loaded
     if (uiConfig) {
       fetchBooks({ reset: true });
     }
-  }, [activeTab, debouncedSearchQuery, uiConfig?.sortFields, uiConfig?.viewPreferences]);
+  }, [activeTab, uiConfig?.sortFields, uiConfig?.viewPreferences]);
 
   const handleBookUpdate = (updatedBook?: Book) => {
     fetchBooks({ reset: true });
@@ -279,35 +277,11 @@ export default function App() {
           </div>
 
           {/* Search Field - Desktop */}
-          <div className="hidden md:block flex-1 max-w-md mx-4">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={16} className="text-tzeentch-cyan/40 group-focus-within:text-tzeentch-cyan transition-colors" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search library..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-tzeentch-card/50 border border-tzeentch-cyan/20 rounded-lg py-1.5 pl-9 pr-3 text-sm text-tzeentch-text placeholder-tzeentch-cyan/30 focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
-              />
-            </div>
-          </div>
+          <GlobalSearch onSelectBook={(b) => setSelectedBook(b)} />
           
           <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-1 sm:flex-none">
             {/* Search Field - Mobile Only */}
-            <div className="relative group md:hidden">
-              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                <Search size={14} className="text-tzeentch-cyan/40" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-24 sm:w-32 bg-tzeentch-card/50 border border-tzeentch-cyan/20 rounded-lg py-1 pl-7 pr-2 text-xs text-tzeentch-text focus:outline-none focus:border-tzeentch-cyan/50 transition-all"
-              />
-            </div>
+            <GlobalSearch onSelectBook={(b) => setSelectedBook(b)} isMobile />
 
             {uiConfig?.absIntegrationEnabled && (
               <button
