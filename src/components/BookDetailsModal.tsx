@@ -29,7 +29,10 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
   useEffect(() => {
     if (isEditing) {
       fetch('/api/tags')
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) return [];
+          return res.json();
+        })
         .then(setAvailableTags)
         .catch(err => console.error('Failed to fetch tags:', err));
     }
@@ -69,6 +72,16 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
     if (book) {
       setEditedBook({ ...book });
       setIsEditing(false);
+      setIsConfirmingDelete(false);
+      setIsRefreshModalOpen(false);
+      setIsTagDropdownOpen(false);
+      setStatusConfirm({isOpen: false, newStatus: null, message: ''});
+    } else {
+      setIsEditing(false);
+      setIsConfirmingDelete(false);
+      setIsRefreshModalOpen(false);
+      setIsTagDropdownOpen(false);
+      setStatusConfirm({isOpen: false, newStatus: null, message: ''});
     }
   }, [book]);
 
@@ -93,10 +106,15 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookToSave),
       });
-      const data = await response.json();
-      if (data.book) {
-        setEditedBook(data.book);
-        onUpdate(data.book);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.book) {
+          setEditedBook(data.book);
+          onUpdate(data.book);
+        } else {
+          setEditedBook(bookToSave as Book);
+          onUpdate(bookToSave as Book);
+        }
       } else {
         setEditedBook(bookToSave as Book);
         onUpdate(bookToSave as Book);
@@ -178,11 +196,16 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      const data = await response.json();
       
-      if (data.book) {
-        setEditedBook(data.book);
-        onUpdate(data.book);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.book) {
+          setEditedBook(data.book);
+          onUpdate(data.book);
+        } else {
+          setEditedBook(prev => prev ? { ...prev, ...updates } : null);
+          onUpdate({ ...editedBook, ...updates } as Book);
+        }
       } else {
         setEditedBook(prev => prev ? { ...prev, ...updates } : null);
         onUpdate({ ...editedBook, ...updates } as Book);
