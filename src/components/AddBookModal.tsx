@@ -15,6 +15,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
   const [source, setSource] = useState<'google' | 'audible' | 'goodreads'>('google');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<SearchResult | null>(null);
   const [status, setStatus] = useState<BookStatus>('Backlog');
   const [format, setFormat] = useState<BookFormat>('Book');
@@ -45,6 +46,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
       setResults([]);
       setSelectedBook(null);
       setLoading(false);
+      setError(null);
     }
   }, [isOpen]);
 
@@ -98,11 +100,22 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
     abortControllerRef.current = abortController;
     
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&source=${searchSource}`, {
         signal: abortController.signal
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || `Error: ${response.status}`);
+        setResults([]);
+        setLoading(false);
+        return;
+      }
+
       const data = await response.json();
+
       if (Array.isArray(data)) {
         setResults(data);
       } else {
@@ -282,6 +295,16 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 </button>
               </form>
 
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-tzeentch-magenta/10 border border-tzeentch-magenta/30 rounded-xl text-tzeentch-magenta text-xs font-bold uppercase tracking-widest text-center"
+                >
+                  {error}
+                </motion.div>
+              )}
+
               <div className="grid grid-cols-1 gap-4">
                 {results.map((result, idx) => (
                   <button
@@ -302,19 +325,21 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                       if (source === 'goodreads' && result.metadata_source) {
                         try {
                           const enrichRes = await fetch(`/api/metadata/enrich?source=goodreads&url=${encodeURIComponent(result.metadata_source)}`);
-                          const details = await enrichRes.json();
-                          if (details && Object.keys(details).length > 0) {
-                            setSelectedBook(prev => {
-                              if (!prev) return null;
-                              return {
-                                ...prev,
-                                isbn: details.isbn || prev.isbn,
-                                pageCount: details.pageCount || prev.pageCount,
-                                publisher: details.publisher || prev.publisher,
-                                publishedDate: details.publishedDate || prev.publishedDate,
-                                description: (details.description && (!prev.description || prev.description.length < details.description.length)) ? details.description : prev.description
-                              };
-                            });
+                          if (enrichRes.ok) {
+                            const details = await enrichRes.json();
+                            if (details && Object.keys(details).length > 0) {
+                              setSelectedBook(prev => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  isbn: details.isbn || prev.isbn,
+                                  pageCount: details.pageCount || prev.pageCount,
+                                  publisher: details.publisher || prev.publisher,
+                                  publishedDate: details.publishedDate || prev.publishedDate,
+                                  description: (details.description && (!prev.description || prev.description.length < details.description.length)) ? details.description : prev.description
+                                };
+                              });
+                            }
                           }
                         } catch (e) {
                           console.error('Failed to enrich metadata:', e);
