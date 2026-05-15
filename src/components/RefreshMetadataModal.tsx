@@ -45,7 +45,7 @@ export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onS
           }, 300);
         }, 1500);
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         setError(`Error: ${errorData.error || 'Failed to refresh metadata'}`);
         setLoading(false);
         setStatus('idle');
