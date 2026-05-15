@@ -97,25 +97,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_author ON books(author);
   CREATE INDEX IF NOT EXISTS idx_started_reading ON books(started_reading);
   CREATE INDEX IF NOT EXISTS idx_finished_reading ON books(finished_reading);
-
-  CREATE VIRTUAL TABLE IF NOT EXISTS books_fts USING fts5(
-    title, author, narrator, description, series, publisher, content='books', content_rowid='id'
-  );
-
-  CREATE TRIGGER IF NOT EXISTS books_ai AFTER INSERT ON books BEGIN
-    INSERT INTO books_fts(rowid, title, author, narrator, description, series, publisher)
-    VALUES (new.id, new.title, new.author, new.narrator, new.description, new.series, new.publisher);
-  END;
-  CREATE TRIGGER IF NOT EXISTS books_ad AFTER DELETE ON books BEGIN
-    INSERT INTO books_fts(books_fts, rowid, title, author, narrator, description, series, publisher)
-    VALUES ('delete', old.id, old.title, old.author, old.narrator, old.description, old.series, old.publisher);
-  END;
-  CREATE TRIGGER IF NOT EXISTS books_au AFTER UPDATE ON books BEGIN
-    INSERT INTO books_fts(books_fts, rowid, title, author, narrator, description, series, publisher)
-    VALUES ('delete', old.id, old.title, old.author, old.narrator, old.description, old.series, old.publisher);
-    INSERT INTO books_fts(rowid, title, author, narrator, description, series, publisher)
-    VALUES (new.id, new.title, new.author, new.narrator, new.description, new.series, new.publisher);
-  END;
 `);
 
 const syncTagsStmt = {
@@ -244,7 +225,6 @@ if (rowCount.count === 0 && fs.existsSync(csvPath)) {
 
 export interface GetBooksOptions {
   statuses?: string[];
-  search?: string;
   tag?: string;
   sortFields?: { id: string; direction: 'asc' | 'desc' }[];
   limit?: number;
@@ -323,20 +303,6 @@ export const getBooks = (options: GetBooksOptions = {}) => {
   const conditions: string[] = [];
   const params: any[] = [];
   
-  if (options.search) {
-     query += ` JOIN books_fts fts ON fts.rowid = b.id`;
-     const matchQuery = options.search
-        .replace(/[^a-zA-Z0-9\\s]/g, ' ')
-        .split(' ')
-        .filter(Boolean)
-        .map(word => `"${word}"*`)
-        .join(' AND ');
-     if (matchQuery) {
-       conditions.push(`books_fts MATCH ?`);
-       params.push(matchQuery);
-     }
-  }
-  
   if (options.tag) {
      query += ` JOIN book_tags bt ON bt.book_id = b.id JOIN tags t ON t.id = bt.tag_id`;
      conditions.push(`t.name = ?`);
@@ -392,6 +358,41 @@ export const getBooks = (options: GetBooksOptions = {}) => {
   return rows.map(mapRowToBook);
 };
 
+export const globalSearch = (query: string, limit: number = 10) => {
+  const likeQuery = `%${query}%`;
+  
+  const sql = `
+    SELECT b.*,
+      CASE 
+        WHEN b.title LIKE ? THEN 100
+        WHEN b.title LIKE ? THEN 90
+        WHEN b.author LIKE ? THEN 80
+        WHEN EXISTS (SELECT 1 FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id AND t.name LIKE ?) THEN 70
+        WHEN b.description LIKE ? THEN 60
+        ELSE 50
+      END as rank
+    FROM books b
+    WHERE b.title LIKE ? OR b.author LIKE ? OR b.description LIKE ? OR EXISTS (SELECT 1 FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id AND t.name LIKE ?)
+    ORDER BY rank DESC, b.id DESC
+    LIMIT ?
+  `;
+
+  // Start matches: %query%
+  // Exact or very close matches can be tweaked, but using LIKE for all and ranking is good enough.
+  const startLike = `${query}%`;
+  
+  const rows = db.prepare(sql).all(
+    startLike, likeQuery, likeQuery, likeQuery, likeQuery,
+    likeQuery, likeQuery, likeQuery, likeQuery,
+    limit
+  );
+  
+  return rows.map((r: any) => {
+    delete r.rank;
+    return mapRowToBook(r);
+  });
+};
+
 export const getBookById = (id: number) => {
   const row = db.prepare('SELECT * FROM books WHERE id = ?').get(id);
   return row ? mapRowToBook(row) : undefined;
@@ -424,6 +425,14 @@ export const addBook = (book: Omit<Book, 'id'>) => {
   return newId;
 };
 
+const ALL_BOOK_FIELDS = [
+  'title', 'author', 'narrator', 'series', 'series_number', 
+  'published_date', 'metadata_source', 'tags', 'description', 
+  'isbn', 'asin', 'started_reading', 'finished_reading', 
+  'status', 'format', 'rating', 'cover_url', 'page_count', 
+  'publisher', 'notes'
+];
+
 export const addBooks = (newBooks: Omit<Book, 'id'>[]) => {
   if (newBooks.length === 0) return [];
   
@@ -432,18 +441,17 @@ export const addBooks = (newBooks: Omit<Book, 'id'>[]) => {
     rating: ensureValidRating(book.rating)
   }));
   
-  const firstBookKeys = Object.keys(normalizedBooks[0]).filter(k => k !== 'id');
   const addedBooks: Book[] = [];
   
   const insert = db.prepare(`
-    INSERT INTO books (${firstBookKeys.join(', ')}) 
-    VALUES (${firstBookKeys.map(() => '?').join(', ')})
+    INSERT INTO books (${ALL_BOOK_FIELDS.join(', ')}) 
+    VALUES (${ALL_BOOK_FIELDS.map(() => '?').join(', ')})
   `);
 
   const insertMany = db.transaction((books) => {
     const tagCache = new Map<string, number>();
     for (const book of books) {
-      const values = firstBookKeys.map(k => (book as any)[k] ?? null);
+      const values = ALL_BOOK_FIELDS.map(k => (book as any)[k] ?? null);
       const result = insert.run(...values);
       const newId = Number(result.lastInsertRowid);
       addedBooks.push({ ...book, id: newId } as Book);
@@ -542,14 +550,13 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
         rating: ensureValidRating(b.rating)
       }));
       
-      const firstBookKeys = Object.keys(normalizedToAdd[0]).filter(k => k !== 'id');
       const insertStmt = db.prepare(`
-        INSERT INTO books (${firstBookKeys.join(', ')}) 
-        VALUES (${firstBookKeys.map(() => '?').join(', ')})
+        INSERT INTO books (${ALL_BOOK_FIELDS.join(', ')}) 
+        VALUES (${ALL_BOOK_FIELDS.map(() => '?').join(', ')})
       `);
 
       for (const book of normalizedToAdd) {
-        const values = firstBookKeys.map(k => (book as any)[k] ?? null);
+        const values = ALL_BOOK_FIELDS.map(k => (book as any)[k] ?? null);
         const result = insertStmt.run(...values);
         const newId = Number(result.lastInsertRowid);
         if ('tags' in book) {
@@ -653,4 +660,4 @@ export const getTags = () => {
   return cachedTags;
 };
 
-export default { getBooks, getBookById, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getTags, exportDbToCsv, getStats };
+export default { getBooks, globalSearch, getBookById, addBook, addBooks, updateBook, updateBooks, deleteBook, deleteBooks, getTags, exportDbToCsv, getStats };
