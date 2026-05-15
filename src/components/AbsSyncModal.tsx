@@ -61,8 +61,12 @@ export default function AbsSyncModal({ config, onClose, onConfigChange, onSyncCo
         })
       });
       
+      if (!syncRes.ok) {
+        const result = await syncRes.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to sync with Audiobookshelf.');
+      }
+      
       const result = await syncRes.json();
-      if (!syncRes.ok) throw new Error(result.error || 'Failed to sync with Audiobookshelf.');
       
       // Update last sync date
       const today = new Date().toISOString().split('T')[0];
