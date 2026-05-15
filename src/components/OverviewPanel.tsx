@@ -28,7 +28,10 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
     const controller = new AbortController();
     
     fetch('/api/stats', { signal: controller.signal })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch stats');
+        return res.json();
+      })
       .then(data => {
         setStats(data);
         setLoading(false);
