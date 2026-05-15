@@ -34,9 +34,19 @@ export default function ManualRefreshModal({ isOpen, onClose, book, onSuccess }:
     if (!query.trim()) return;
     
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&source=${source}`);
+      
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || `Error ${response.status}`);
+        setResults([]);
+        return;
+      }
+
       const data = await response.json();
+
       if (Array.isArray(data)) {
         setResults(data);
       } else {
@@ -45,6 +55,7 @@ export default function ManualRefreshModal({ isOpen, onClose, book, onSuccess }:
       }
     } catch (error) {
       console.error('Search failed:', error);
+      setError('Search failed. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -179,7 +190,34 @@ export default function ManualRefreshModal({ isOpen, onClose, book, onSuccess }:
                 {results.map((result, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSelectedResult(result)}
+                    onClick={async () => {
+                      setSelectedResult(result);
+                      
+                      // Enrich Goodreads metadata if missing fields
+                      if (source === 'goodreads' && result.metadata_source) {
+                        try {
+                          const enrichRes = await fetch(`/api/metadata/enrich?source=goodreads&url=${encodeURIComponent(result.metadata_source)}`);
+                          if (enrichRes.ok) {
+                            const details = await enrichRes.json();
+                            if (details && Object.keys(details).length > 0) {
+                              setSelectedResult(prev => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  isbn: details.isbn || prev.isbn,
+                                  pageCount: details.pageCount || prev.pageCount,
+                                  publisher: details.publisher || prev.publisher,
+                                  publishedDate: details.publishedDate || prev.publishedDate,
+                                  description: (details.description && (!prev.description || prev.description.length < details.description.length)) ? details.description : prev.description
+                                };
+                              });
+                            }
+                          }
+                        } catch (e) {
+                          console.error('Failed to enrich metadata:', e);
+                        }
+                      }
+                    }}
                     className="flex gap-4 p-4 bg-tzeentch-card/40 rounded-xl border border-tzeentch-cyan/10 hover:border-tzeentch-cyan/40 hover:bg-tzeentch-card/60 transition-all text-left group"
                   >
                     <div className="w-16 h-24 bg-tzeentch-warp/40 rounded-lg overflow-hidden flex-shrink-0 border border-tzeentch-cyan/5">
