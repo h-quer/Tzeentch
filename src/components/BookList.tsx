@@ -526,7 +526,6 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
   const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({});
   const [activeFilterPopover, setActiveFilterPopover] = useState<string | null>(null);
   
-  const observerTarget = useRef<HTMLTableRowElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const filteredBooks = useMemo(() => {
@@ -555,24 +554,26 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
     scrollStateRef.current = { hasMore };
   }, [hasMore]);
 
-  useEffect(() => {
-    if (!onLoadMore) return;
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const { hasMore } = scrollStateRef.current;
-        if (entries[0].isIntersecting && hasMore) {
-          onLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+  const setObserverTarget = useCallback((node: HTMLTableRowElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
     }
-
-    return () => observer.disconnect();
+    
+    if (node && onLoadMore) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const { hasMore } = scrollStateRef.current;
+          if (entries[0].isIntersecting && hasMore) {
+            onLoadMore();
+          }
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(node);
+      observerRef.current = observer;
+    }
   }, [onLoadMore]);
 
   const handleApplyFilter = (col: string, filter: ColumnFilter | null) => {
@@ -657,14 +658,14 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
               viewPreferences={viewPreferences}
             />
           ))}
-          {hasMore && filteredBooks.length > 0 && (
-            <tr ref={observerTarget}>
+          {hasMore && (
+            <tr ref={setObserverTarget} key={`loader-${books.length}`}>
               <td colSpan={columns.length + 2} className="h-20 text-center">
                 <div className="w-6 h-6 border-2 border-tzeentch-cyan/20 border-t-tzeentch-cyan rounded-full animate-spin mx-auto"></div>
               </td>
             </tr>
           )}
-          {filteredBooks.length === 0 && (
+          {filteredBooks.length === 0 && !hasMore && (
             <tr>
               <td colSpan={columns.length + 2} className="py-20 text-center">
                 <div className="flex flex-col items-center gap-3 opacity-40">
