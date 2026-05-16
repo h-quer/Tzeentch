@@ -98,6 +98,7 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
     try {
       const bookToSave = {
         ...editedBook,
+        format: editedBook.format,
         rating: editedBook.rating && editedBook.rating > 0 ? editedBook.rating : null,
         tags: selectedTags.join(', ')
       };
