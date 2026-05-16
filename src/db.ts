@@ -70,7 +70,7 @@ db.exec(`
     started_reading TEXT,
     finished_reading TEXT,
     status TEXT CHECK(status IS NULL OR status IN ('Reading', 'Read', 'Backlog', 'Wishlist', 'Dropped')),
-    format TEXT CHECK(format IS NULL OR format IN ('Book', 'Audiobook')),
+    format TEXT CHECK(format IS NULL OR format IN ('Print', 'Ebook', 'Audiobook')),
     rating INTEGER CHECK(rating IS NULL OR (rating >= 1 AND rating <= 5)),
     cover_url TEXT,
     page_count INTEGER CHECK(page_count IS NULL OR page_count > 0),
@@ -137,6 +137,76 @@ const ensureValidRating = (rating: any): number | null => {
 };
 
 // Migration Logic
+const currentSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='books'").get() as { sql: string };
+const needsSchemaMigration = currentSchema && !currentSchema.sql.includes("'Print'");
+
+if (needsSchemaMigration) {
+  console.log('Migrating books format schema...');
+  db.transaction(() => {
+    // Drop indexes
+    db.exec(`
+      DROP INDEX IF EXISTS idx_status;
+      DROP INDEX IF EXISTS idx_rating;
+      DROP INDEX IF EXISTS idx_format;
+      DROP INDEX IF EXISTS idx_author;
+      DROP INDEX IF EXISTS idx_started_reading;
+      DROP INDEX IF EXISTS idx_finished_reading;
+    `);
+
+    db.exec(`ALTER TABLE books RENAME TO books_old`);
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        author TEXT,
+        narrator TEXT,
+        series TEXT,
+        series_number TEXT,
+        published_date TEXT,
+        metadata_source TEXT,
+        tags TEXT,
+        description TEXT,
+        isbn TEXT,
+        asin TEXT,
+        started_reading TEXT,
+        finished_reading TEXT,
+        status TEXT CHECK(status IS NULL OR status IN ('Reading', 'Read', 'Backlog', 'Wishlist', 'Dropped')),
+        format TEXT CHECK(format IS NULL OR format IN ('Print', 'Ebook', 'Audiobook')),
+        rating INTEGER CHECK(rating IS NULL OR (rating >= 1 AND rating <= 5)),
+        cover_url TEXT,
+        page_count INTEGER CHECK(page_count IS NULL OR page_count > 0),
+        publisher TEXT,
+        notes TEXT
+      );
+    `);
+
+    db.exec(`
+      INSERT INTO books (id, title, author, narrator, series, series_number, published_date, metadata_source, tags, description, isbn, asin, started_reading, finished_reading, status, format, rating, cover_url, page_count, publisher, notes)
+      SELECT id, title, author, narrator, series, series_number, published_date, metadata_source, tags, description, isbn, asin, started_reading, finished_reading, status, 
+      CASE WHEN format = 'Book' THEN 'Print' ELSE format END, 
+      rating, cover_url, page_count, publisher, notes
+      FROM books_old;
+    `);
+
+    db.exec(`DROP TABLE books_old`);
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_status ON books(status);
+      CREATE INDEX IF NOT EXISTS idx_rating ON books(rating);
+      CREATE INDEX IF NOT EXISTS idx_format ON books(format);
+      CREATE INDEX IF NOT EXISTS idx_author ON books(author);
+      CREATE INDEX IF NOT EXISTS idx_started_reading ON books(started_reading);
+      CREATE INDEX IF NOT EXISTS idx_finished_reading ON books(finished_reading);
+    `);
+  })();
+}
+
+// Data migration logic for format (in case schema was already updated but data wasn't)
+try {
+  db.prepare("UPDATE books SET format = 'Print' WHERE format = 'Book'").run();
+} catch (e) {}
+
 const rowCount = db.prepare('SELECT COUNT(*) as count FROM books').get() as { count: number };
 if (rowCount.count === 0 && fs.existsSync(csvPath)) {
   console.log('Migrating data from CSV to SQLite...');
@@ -252,7 +322,7 @@ export const getStats = () => {
   `).all() as {name: string, value: number}[];
 
   // Formats
-  const formatData = db.prepare(`SELECT format as name, COUNT(*) as value FROM books WHERE format IN ('Book', 'Audiobook') GROUP BY format`).all() as {name: string, value: number}[];
+  const formatData = db.prepare(`SELECT format as name, COUNT(*) as value FROM books WHERE format IN ('Print', 'Ebook', 'Audiobook') GROUP BY format`).all() as {name: string, value: number}[];
 
   // Top Tags
   const topTags = db.prepare(`
