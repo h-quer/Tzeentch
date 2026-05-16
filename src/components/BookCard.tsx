@@ -1,5 +1,5 @@
 import { Book, BookStatus } from '../types';
-import { Star, MoreHorizontal, Trash2, CheckCircle, BookOpen, Library, Bookmark, Headphones, Book as BookIcon, RefreshCw, XCircle } from 'lucide-react';
+import { Star, MoreHorizontal, Trash2, CheckCircle, BookOpen, Library, Bookmark, Headphones, Book as BookIcon, RefreshCw, XCircle, Tablet } from 'lucide-react';
 import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import RefreshMetadataModal from './RefreshMetadataModal';
@@ -221,7 +221,7 @@ const BookCard: React.FC<BookCardProps> = memo(({ book, onUpdate, onClick, field
         
         {/* Format Badge */}
         <div className="absolute top-2 left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded bg-tzeentch-bg/80 backdrop-blur-md text-tzeentch-cyan text-[7px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 sm:gap-1.5 border border-tzeentch-cyan/20">
-          {book.format === 'Audiobook' ? <Headphones size={8} className="sm:w-[10px]" /> : <BookIcon size={8} className="sm:w-[10px]" />}
+          {book.format === 'Audiobook' ? <Headphones size={8} className="sm:w-[10px]" /> : (book.format === 'Ebook' ? <Tablet size={8} className="sm:w-[10px]" /> : <BookIcon size={8} className="sm:w-[10px]" />)}
           {book.format}
         </div>
 
