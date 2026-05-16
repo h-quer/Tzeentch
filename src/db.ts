@@ -362,6 +362,7 @@ export const getStats = () => {
 const mapRowToBook = (row: any): Book => {
   return {
     ...row,
+    format: row.format,
     id: Number(row.id),
     rating: row.rating ? Number(row.rating) : undefined,
     page_count: row.page_count ? Number(row.page_count) : undefined,
