@@ -120,7 +120,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
                 stroke="none"
               >
                 {stats.formatData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={index === 0 ? '#22d3ee' : '#c026d3'} />
+                  <Cell key={`cell-${index}`} fill={['#22d3ee', '#c026d3', '#f472b6'][index % 3]} />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
