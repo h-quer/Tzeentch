@@ -99,35 +99,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_finished_reading ON books(finished_reading);
 `);
 
-const syncTagsStmt = {
-  delete: db.prepare('DELETE FROM book_tags WHERE book_id = ?'),
-  insertTag: db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)'),
-  getTagId: db.prepare('SELECT id FROM tags WHERE name = ? COLLATE NOCASE'),
-  insertLink: db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)')
-};
 
-const syncTags = (bookId: number, tagsString?: string | null, tagCache?: Map<string, number>) => {
-  syncTagsStmt.delete.run(bookId);
-  if (!tagsString) return;
-  const tags = Array.from(new Set(tagsString.split(',').map(t => t.trim()).filter(Boolean)));
-  for (const tag of tags) {
-    const normalizedTag = tag.toLowerCase();
-    let tagId = tagCache?.get(normalizedTag);
-    
-    if (!tagId) {
-      syncTagsStmt.insertTag.run(tag);
-      const idRow = syncTagsStmt.getTagId.get(tag) as { id: number };
-      if (idRow) {
-        tagId = idRow.id;
-        tagCache?.set(normalizedTag, tagId);
-      }
-    }
-    
-    if (tagId) {
-      syncTagsStmt.insertLink.run(bookId, tagId);
-    }
-  }
-};
 
 const ensureValidRating = (rating: any): number | null => {
   if (rating === null || rating === undefined || rating === '') return null;
@@ -206,6 +178,60 @@ if (needsSchemaMigration) {
 try {
   db.prepare("UPDATE books SET format = 'Print' WHERE format = 'Book'").run();
 } catch (e) {}
+
+// Repair dangling child table references
+const bookTagsSchemaRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='book_tags'").get() as { sql: string } | undefined;
+if (bookTagsSchemaRow && bookTagsSchemaRow.sql.includes('books_old')) {
+  console.log('Repairing book_tags schema references...');
+  try {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE book_tags_new (
+          book_id INTEGER,
+          tag_id INTEGER,
+          PRIMARY KEY (book_id, tag_id),
+          FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+          FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        );
+        INSERT INTO book_tags_new SELECT * FROM book_tags;
+        DROP TABLE book_tags;
+        ALTER TABLE book_tags_new RENAME TO book_tags;
+      `);
+    })();
+  } catch(e) {
+    console.error('Failed to repair book_tags schema:', e);
+  }
+}
+
+const syncTagsStmt = {
+  delete: db.prepare('DELETE FROM book_tags WHERE book_id = ?'),
+  insertTag: db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)'),
+  getTagId: db.prepare('SELECT id FROM tags WHERE name = ? COLLATE NOCASE'),
+  insertLink: db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)')
+};
+
+const syncTags = (bookId: number, tagsString?: string | null, tagCache?: Map<string, number>) => {
+  syncTagsStmt.delete.run(bookId);
+  if (!tagsString) return;
+  const tags = Array.from(new Set(tagsString.split(',').map(t => t.trim()).filter(Boolean)));
+  for (const tag of tags) {
+    const normalizedTag = tag.toLowerCase();
+    let tagId = tagCache?.get(normalizedTag);
+    
+    if (!tagId) {
+      syncTagsStmt.insertTag.run(tag);
+      const idRow = syncTagsStmt.getTagId.get(tag) as { id: number };
+      if (idRow) {
+        tagId = idRow.id;
+        tagCache?.set(normalizedTag, tagId);
+      }
+    }
+    
+    if (tagId) {
+      syncTagsStmt.insertLink.run(bookId, tagId);
+    }
+  }
+};
 
 const rowCount = db.prepare('SELECT COUNT(*) as count FROM books').get() as { count: number };
 if (rowCount.count === 0 && fs.existsSync(csvPath)) {
