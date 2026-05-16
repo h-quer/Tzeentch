@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Book, BookStatus } from '../types';
-import { Star, Headphones, Book as BookIcon, CheckCircle, MoreHorizontal, BookOpen, Library, Bookmark, RefreshCw, Trash2, XCircle, Filter, Search, X, Eraser } from 'lucide-react';
+import { Star, Headphones, Book as BookIcon, CheckCircle, MoreHorizontal, BookOpen, Library, Bookmark, RefreshCw, Trash2, XCircle, Filter, Search, X, Eraser, Tablet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AVAILABLE_FIELDS } from './SettingsModal';
 import RefreshMetadataModal from './RefreshMetadataModal';
@@ -309,7 +309,7 @@ const BookListRow: React.FC<BookListRowProps> = React.memo(({ book, onBookClick,
       case 'format':
         return (
           <div className="flex items-center gap-2 text-xs font-bold text-tzeentch-cyan">
-            {book.format === 'Audiobook' ? <Headphones size={14} /> : <BookIcon size={14} />}
+            {book.format === 'Audiobook' ? <Headphones size={14} /> : (book.format === 'Ebook' ? <Tablet size={14} /> : <BookIcon size={14} />)}
             <span>{book.format.toUpperCase()}</span>
           </div>
         );
