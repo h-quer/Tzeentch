@@ -125,7 +125,8 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, selectedBo
           className="w-full bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-lg p-3 text-tzeentch-cyan focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
         >
           <option value="" className="bg-tzeentch-bg text-tzeentch-text">Select Format</option>
-          <option value="Book" className="bg-tzeentch-bg text-tzeentch-text">Book</option>
+          <option value="Print" className="bg-tzeentch-bg text-tzeentch-text">Print</option>
+          <option value="Ebook" className="bg-tzeentch-bg text-tzeentch-text">Ebook</option>
           <option value="Audiobook" className="bg-tzeentch-bg text-tzeentch-text">Audiobook</option>
         </select>
       );
