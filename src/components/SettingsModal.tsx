@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, ArrowUp, ArrowDown, Plus, Trash2, Monitor, Sun, Moon, LayoutGrid, List, Upload, FileText, Check, Loader2, AlertCircle, EyeOff, Combine, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { UIConfig } from '../types';
+import { UIConfig, BookFormat } from '../types';
 
 interface SettingsModalProps {
   config: UIConfig;
@@ -50,7 +50,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
 
   // Import State
   const [file, setFile] = useState<File | null>(null);
-  const [importFormat, setImportFormat] = useState<'Book' | 'Audiobook' | null>(null);
+  const [importFormat, setImportFormat] = useState<BookFormat | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccessCount, setImportSuccessCount] = useState<number | null>(null);
@@ -531,17 +531,28 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
 
                       <div className="space-y-3">
                         <p className="text-xs font-bold text-tzeentch-cyan/60 uppercase tracking-widest px-1">Import As</p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-2">
                           <button
-                            onClick={() => setImportFormat(importFormat === 'Book' ? null : 'Book')}
+                            onClick={() => setImportFormat(importFormat === 'Print' ? null : 'Print')}
                             className={`
                               py-3 rounded-xl font-bold text-xs transition-all border
-                              ${importFormat === 'Book' 
+                              ${importFormat === 'Print' 
                                 ? 'bg-tzeentch-cyan text-tzeentch-bg border-tzeentch-cyan shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
                                 : 'bg-tzeentch-card/30 text-tzeentch-cyan/60 border-tzeentch-cyan/10 hover:border-tzeentch-cyan/30'}
                             `}
                           >
-                            BOOK
+                            PRINT
+                          </button>
+                          <button
+                            onClick={() => setImportFormat(importFormat === 'Ebook' ? null : 'Ebook')}
+                            className={`
+                              py-3 rounded-xl font-bold text-xs transition-all border
+                              ${importFormat === 'Ebook' 
+                                ? 'bg-[#f472b6] text-white border-[#f472b6] shadow-[0_0_15px_rgba(244,114,182,0.3)]' 
+                                : 'bg-tzeentch-card/30 text-[#f472b6]/60 border-[#f472b6]/10 hover:border-[#f472b6]/30'}
+                            `}
+                          >
+                            EBOOK
                           </button>
                           <button
                             onClick={() => setImportFormat(importFormat === 'Audiobook' ? null : 'Audiobook')}
