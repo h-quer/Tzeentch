@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Star, BookOpen, CheckCircle, Library, Bookmark, Trash2, Calendar, Hash, Building, Tag, Headphones, Book as BookIcon, Edit2, Save, Plus, RefreshCw, XCircle } from 'lucide-react';
+import { X, Star, BookOpen, CheckCircle, Library, Bookmark, Trash2, Calendar, Hash, Building, Tag, Headphones, Book as BookIcon, Edit2, Save, Plus, RefreshCw, XCircle, Tablet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Book, BookStatus, BookFormat } from '../types';
 import RefreshMetadataModal from './RefreshMetadataModal';
@@ -512,12 +512,13 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
                     onChange={handleInputChange}
                     className="bg-tzeentch-bg text-tzeentch-cyan border border-tzeentch-cyan/30 rounded-lg px-3 py-1 font-bold"
                   >
-                    <option value="Book">Book</option>
+                    <option value="Print">Print</option>
+                    <option value="Ebook">Ebook</option>
                     <option value="Audiobook">Audiobook</option>
                   </select>
                 ) : (
                   <div className="flex items-center gap-2 text-tzeentch-cyan font-bold">
-                    {editedBook.format === 'Audiobook' ? <Headphones size={18} /> : <BookIcon size={18} />}
+                    {editedBook.format === 'Audiobook' ? <Headphones size={18} /> : (editedBook.format === 'Ebook' ? <Tablet size={18} /> : <BookIcon size={18} />)}
                     <span>{editedBook.format.toUpperCase()}</span>
                   </div>
                 )}
