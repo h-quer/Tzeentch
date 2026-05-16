@@ -839,6 +839,9 @@ async function startServer() {
         if (started_reading && !finished_reading) status = 'Reading';
         else if (finished_reading) status = 'Read';
 
+        const isEbook = !!item.media?.ebookFile;
+        const absFormat = isEbook ? 'Ebook' : 'Audiobook';
+
         let cover_url = '';
         if (item.id && baseUrl && absApiKey) {
            const coverUrl = `${baseUrl}/api/items/${item.id}/cover`;
@@ -863,7 +866,7 @@ async function startServer() {
           series_number: (series_number !== '' && series_number !== undefined) ? series_number.toString() : '',
           published_date, description, isbn, asin, publisher, tags, page_count,
           started_reading, finished_reading, status,
-          format: 'Audiobook', metadata_source: 'Audiobookshelf'
+          format: absFormat, metadata_source: 'Audiobookshelf'
         };
         if (cover_url) bookData.cover_url = cover_url;
 
@@ -1406,13 +1409,15 @@ async function startServer() {
         const isbn = isbn13Str.replace(/="|"|'/g, '') || isbnStr.replace(/="|"|'/g, '');
 
         // Smarter format inference
-        let inferredFormat = 'Book';
+        let inferredFormat = 'Print';
         const binding = String(row.Binding || '').toLowerCase();
         const shelvesStr = String(row.Bookshelves || '').toLowerCase();
         const title = String(row.Title || '').toLowerCase();
         
         if (binding.includes('audio') || shelvesStr.includes('audiobook') || shelvesStr.includes('audio') || title.includes('(audiobook)')) {
           inferredFormat = 'Audiobook';
+        } else if (binding.includes('ebook') || binding.includes('kindle') || shelvesStr.includes('ebook') || shelvesStr.includes('kindle') || title.includes('(ebook)')) {
+          inferredFormat = 'Ebook';
         }
 
         // Process shelves for status and tags
