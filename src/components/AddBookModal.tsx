@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Book as BookIcon, Headphones, Star, Check, Loader2, Tag, Plus } from 'lucide-react';
+import { X, Search, Book as BookIcon, Headphones, Star, Check, Loader2, Tag, Plus, Tablet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SearchResult, Book, BookStatus, BookFormat } from '../types';
 
@@ -18,7 +18,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
   const [error, setError] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<SearchResult | null>(null);
   const [status, setStatus] = useState<BookStatus>('Backlog');
-  const [format, setFormat] = useState<BookFormat>('Book');
+  const [format, setFormat] = useState<BookFormat>('Print');
   const [rating, setRating] = useState(0);
   const [startedReading, setStartedReading] = useState('');
   const [finishedReading, setFinishedReading] = useState('');
@@ -126,7 +126,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
       if (searchSource === 'audible') {
         setFormat('Audiobook');
       } else {
-        setFormat('Book');
+        setFormat('Print');
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -190,7 +190,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
     setResults([]);
     setSelectedBook(null);
     setStatus('Backlog');
-    setFormat('Book');
+    setFormat('Print');
     setRating(0);
     setStartedReading('');
     setFinishedReading('');
@@ -441,13 +441,13 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 <div className="space-y-4">
                   <label className="block text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/40">Manifestation</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['Book', 'Audiobook'] as BookFormat[]).map((f) => (
+                    {(['Print', 'Ebook', 'Audiobook'] as BookFormat[]).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFormat(f)}
                         className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all border ${format === f ? 'bg-tzeentch-cyan text-tzeentch-bg border-tzeentch-cyan shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 'bg-tzeentch-card text-tzeentch-cyan border-tzeentch-cyan/10 hover:border-tzeentch-cyan/30'}`}
                       >
-                        {f === 'Audiobook' ? <Headphones size={16} /> : <BookIcon size={16} />}
+                        {f === 'Audiobook' ? <Headphones size={16} /> : (f === 'Ebook' ? <Tablet size={16} /> : <BookIcon size={16} />)}
                         {f.toUpperCase()}
                       </button>
                     ))}
