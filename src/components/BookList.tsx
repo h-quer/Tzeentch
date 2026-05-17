@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Book, BookStatus } from '../types';
 import { Star, Headphones, Book as BookIcon, CheckCircle, MoreHorizontal, BookOpen, Library, Bookmark, RefreshCw, Trash2, XCircle, Filter, Search, X, Eraser, Tablet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
