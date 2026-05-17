@@ -82,10 +82,6 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
 
   const handleSourceChange = (newSource: 'google' | 'audible' | 'goodreads') => {
     setSource(newSource);
-    // Automatically trigger search when switching sources if a query exists
-    if (query.trim()) {
-      handleSearchInternal(query, newSource);
-    }
   };
 
   const handleSearchInternal = async (searchQuery: string, searchSource: string) => {
