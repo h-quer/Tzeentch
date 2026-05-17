@@ -1,9 +1,11 @@
+@import "tailwindcss";
+
 @font-face {
   font-family: 'UnifrakturMaguntia';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../public/fonts/UnifrakturMaguntia.ttf') format('truetype');
+  src: url('/fonts/UnifrakturMaguntia.ttf') format('truetype');
 }
 
 @font-face {
@@ -11,7 +13,7 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('../public/fonts/SpaceGrotesk-Light.ttf') format('truetype');
+  src: url('/fonts/SpaceGrotesk-Light.ttf') format('truetype');
 }
 
 @font-face {
@@ -19,7 +21,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../public/fonts/SpaceGrotesk-Regular.ttf') format('truetype');
+  src: url('/fonts/SpaceGrotesk-Regular.ttf') format('truetype');
 }
 
 @font-face {
@@ -27,7 +29,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('../public/fonts/SpaceGrotesk-Medium.ttf') format('truetype');
+  src: url('/fonts/SpaceGrotesk-Medium.ttf') format('truetype');
 }
 
 @font-face {
@@ -35,7 +37,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('../public/fonts/SpaceGrotesk-SemiBold.ttf') format('truetype');
+  src: url('/fonts/SpaceGrotesk-SemiBold.ttf') format('truetype');
 }
 
 @font-face {
@@ -43,10 +45,9 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('../public/fonts/SpaceGrotesk-Bold.ttf') format('truetype');
+  src: url('/fonts/SpaceGrotesk-Bold.ttf') format('truetype');
 }
 
-@import "tailwindcss";
 
 @layer base {
   :root {
