@@ -310,7 +310,7 @@ const BookListRow: React.FC<BookListRowProps> = React.memo(({ book, onBookClick,
         return (
           <div className="flex items-center gap-2 text-xs font-bold text-tzeentch-cyan">
             {book.format === 'Audiobook' ? <Headphones size={14} /> : (book.format === 'Ebook' ? <Tablet size={14} /> : <BookIcon size={14} />)}
-            <span>{book.format.toUpperCase()}</span>
+            <span>{book.format ? book.format.toUpperCase() : '—'}</span>
           </div>
         );
       case 'status':
@@ -541,7 +541,7 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
           return stringValue !== '';
         }
         if (filter.type === 'search') {
-          return stringValue.includes(filter.value.toLowerCase());
+          return stringValue.includes((filter.value || '').toLowerCase());
         }
         return true;
       });
