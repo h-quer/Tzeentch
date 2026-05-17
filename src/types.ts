@@ -1,5 +1,5 @@
 export type BookStatus = 'Wishlist' | 'Backlog' | 'Reading' | 'Read' | 'Dropped';
-export type BookFormat = 'Book' | 'Audiobook';
+export type BookFormat = 'Print' | 'Ebook' | 'Audiobook';
 
 export interface Book {
   id: number;
