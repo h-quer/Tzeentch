@@ -319,6 +319,25 @@ if (rowCount.count === 0 && fs.existsSync(csvPath)) {
   }
 }
 
+try {
+  console.log('Resyncing tags across all books on startup...');
+  const allBooks = db.prepare('SELECT id, tags FROM books').all() as {id: number, tags: string | null}[];
+  // Clear tags fully to prevent drifting
+  db.exec('DELETE FROM book_tags; DELETE FROM tags;');
+  
+  const tagCache = new Map<string, number>();
+  db.transaction((booksToSync) => {
+    for (const book of booksToSync) {
+      if (book.tags) {
+        syncTags(book.id, book.tags, tagCache);
+      }
+    }
+  })(allBooks);
+  console.log(`Resynced tags for ${allBooks.length} books.`);
+} catch (e) {
+  console.error('Failed to resync tags:', e);
+}
+
 export interface GetBooksOptions {
   statuses?: string[];
   tag?: string;
