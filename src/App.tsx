@@ -273,7 +273,7 @@ export default function App() {
                 referrerPolicy="no-referrer" 
               />
             </div>
-            <h1 className="hidden sm:block text-xl sm:text-2xl font-bold tracking-tighter text-tzeentch-cyan font-display">Tzeentch</h1>
+            <h1 className="hidden sm:block text-2xl sm:text-4xl font-bold tracking-tighter text-tzeentch-cyan font-old-german">Tzeentch</h1>
           </div>
 
           {/* Search Field - Desktop */}
