@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, ArrowUp, ArrowDown, Plus, Trash2, Monitor, Sun, Moon, LayoutGrid, List, Upload, FileText, Check, Loader2, AlertCircle, EyeOff, Combine, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { UIConfig, BookFormat } from '../types';
+import { UIConfig, BookFormat, BOOK_STATUSES } from '../types';
 
 interface SettingsModalProps {
   config: UIConfig;
@@ -432,7 +432,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
                   <div className="space-y-4 pt-4">
                     <h4 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/40">Pane View Preferences</h4>
                     <div className="space-y-3">
-                      {['Reading', 'Read', 'Backlog', 'Wishlist', 'Dropped'].map((status) => (
+                      {BOOK_STATUSES.map((status) => (
                         <div key={status} className="flex items-center justify-between p-3 bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-xl">
                           <span className="text-sm font-bold text-tzeentch-text">{status}</span>
                           <div className="flex bg-tzeentch-bg p-1 rounded-lg border border-tzeentch-cyan/10">
