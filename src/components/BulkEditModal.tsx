@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Book } from '../types';
+import { Book, BOOK_STATUSES, BOOK_FORMATS } from '../types';
 import { AVAILABLE_FIELDS } from './SettingsModal';
 
 interface BulkEditModalProps {
@@ -108,11 +108,9 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, selectedBo
           className="w-full bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-lg p-3 text-tzeentch-cyan focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
         >
           <option value="" className="bg-tzeentch-bg text-tzeentch-text">Select Status</option>
-          {viewPreferences?.['Reading'] !== 'disabled' && <option value="Reading" className="bg-tzeentch-bg text-tzeentch-text">Reading</option>}
-          {viewPreferences?.['Read'] !== 'disabled' && <option value="Read" className="bg-tzeentch-bg text-tzeentch-text">Read</option>}
-          {viewPreferences?.['Backlog'] !== 'disabled' && <option value="Backlog" className="bg-tzeentch-bg text-tzeentch-text">Backlog</option>}
-          {viewPreferences?.['Wishlist'] !== 'disabled' && <option value="Wishlist" className="bg-tzeentch-bg text-tzeentch-text">Wishlist</option>}
-          {viewPreferences?.['Dropped'] !== 'disabled' && <option value="Dropped" className="bg-tzeentch-bg text-tzeentch-text">Dropped</option>}
+          {BOOK_STATUSES.filter(s => viewPreferences?.[s] !== 'disabled').map(s => (
+            <option key={s} value={s} className="bg-tzeentch-bg text-tzeentch-text">{s}</option>
+          ))}
         </select>
       );
     }
@@ -125,9 +123,9 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, selectedBo
           className="w-full bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-lg p-3 text-tzeentch-cyan focus:outline-none focus:border-tzeentch-cyan/50 focus:ring-1 focus:ring-tzeentch-cyan/50 transition-all"
         >
           <option value="" className="bg-tzeentch-bg text-tzeentch-text">Select Format</option>
-          <option value="Print" className="bg-tzeentch-bg text-tzeentch-text">Print</option>
-          <option value="Ebook" className="bg-tzeentch-bg text-tzeentch-text">Ebook</option>
-          <option value="Audiobook" className="bg-tzeentch-bg text-tzeentch-text">Audiobook</option>
+          {BOOK_FORMATS.map((f) => (
+            <option key={f} value={f} className="bg-tzeentch-bg text-tzeentch-text">{f}</option>
+          ))}
         </select>
       );
     }
