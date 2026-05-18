@@ -1,5 +1,8 @@
-export type BookStatus = 'Wishlist' | 'Backlog' | 'Reading' | 'Read' | 'Dropped';
-export type BookFormat = 'Print' | 'Ebook' | 'Audiobook';
+export const BOOK_STATUSES = ['Wishlist', 'Backlog', 'Reading', 'Read', 'Dropped'] as const;
+export type BookStatus = typeof BOOK_STATUSES[number];
+
+export const BOOK_FORMATS = ['Print', 'Ebook', 'Audiobook'] as const;
+export type BookFormat = typeof BOOK_FORMATS[number];
 
 export interface Book {
   id: number;
