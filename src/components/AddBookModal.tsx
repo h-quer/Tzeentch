@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, Book as BookIcon, Headphones, Star, Check, Loader2, Tag, Plus, Tablet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { SearchResult, Book, BookStatus, BookFormat } from '../types';
+import { SearchResult, Book, BookStatus, BookFormat, BOOK_STATUSES, BOOK_FORMATS } from '../types';
 
 interface AddBookModalProps {
   isOpen: boolean;
@@ -420,7 +420,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 <div className="space-y-4">
                   <label className="block text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/40">Destined Shelf</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['Reading', 'Read', 'Backlog', 'Wishlist', 'Dropped'] as BookStatus[])
+                    {BOOK_STATUSES
                       .filter(s => viewPreferences?.[s] !== 'disabled')
                       .map((s) => (
                       <button
@@ -437,7 +437,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 <div className="space-y-4">
                   <label className="block text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/40">Manifestation</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['Print', 'Ebook', 'Audiobook'] as BookFormat[]).map((f) => (
+                    {BOOK_FORMATS.map((f) => (
                       <button
                         key={f}
                         onClick={() => setFormat(f)}
