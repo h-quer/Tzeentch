@@ -72,7 +72,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
     <div 
       onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
       tabIndex={0}
-      className="h-full overflow-y-auto lg:overflow-hidden no-scrollbar grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[1fr,1fr,1fr] gap-4 lg:gap-6 p-4 lg:p-6 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg transition-shadow outline-none rounded-xl"
+      className="h-full overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[1fr,1fr,1fr] gap-4 lg:gap-6 p-4 lg:p-6 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg transition-shadow outline-none rounded-xl"
     >
       {/* Categories - Horizontal Bar Chart */}
       <motion.div 

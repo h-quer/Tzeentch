@@ -94,7 +94,7 @@ export default function AbsSyncModal({ config, onClose, onConfigChange, onSyncCo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tzeentch-bg/80 backdrop-blur-sm">
-      <div className="bg-tzeentch-card border border-tzeentch-cyan/30 rounded-2xl shadow-[0_0_40px_rgba(34,211,238,0.15)] w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-tzeentch-card border border-tzeentch-cyan/30 rounded-2xl shadow-[0_0_40px_rgba(34,211,238,0.15)] w-full max-w-lg overflow-y-auto flex flex-col max-h-[95dvh]">
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-tzeentch-cyan/20 bg-tzeentch-cyan/5">
           <h2 className="text-xl font-bold text-tzeentch-cyan tracking-tight flex items-center gap-2">
             <RefreshCw size={20} />

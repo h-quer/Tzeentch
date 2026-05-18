@@ -74,9 +74,9 @@ export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onS
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-tzeentch-bg w-full max-w-md rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden border border-tzeentch-cyan/30"
+        className="relative bg-tzeentch-bg w-full max-w-md rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[95dvh] border border-tzeentch-cyan/30"
       >
-        <div className="px-8 py-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/50 backdrop-blur-md">
+        <div className="px-6 sm:px-8 py-4 sm:py-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/50 backdrop-blur-md">
           <h2 className="text-xl font-bold text-tzeentch-cyan font-display tracking-tighter flex items-center gap-2">
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             REFRESH METADATA
@@ -86,7 +86,7 @@ export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onS
           </button>
         </div>
 
-        <div className="p-8 space-y-6">
+        <div className="p-4 sm:p-8 space-y-6">
           {error && (
             <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-xl flex gap-4 text-red-400 text-sm font-medium">
               <AlertTriangle size={20} className="shrink-0" />

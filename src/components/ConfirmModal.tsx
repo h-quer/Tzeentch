@@ -40,7 +40,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative bg-tzeentch-card border border-tzeentch-cyan/30 p-6 rounded-2xl shadow-[0_0_40px_rgba(34,211,238,0.15)] max-w-md w-full"
+            className="relative bg-tzeentch-card border border-tzeentch-cyan/30 p-4 sm:p-6 rounded-2xl shadow-[0_0_40px_rgba(34,211,238,0.15)] max-w-md w-full max-h-[95dvh] overflow-y-auto"
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 bg-red-500/10 rounded-full">

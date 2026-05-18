@@ -309,11 +309,11 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
         initial={{ opacity: 0, scale: 0.9, y: 40 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 40 }}
-        className="relative bg-tzeentch-bg w-full max-w-5xl rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-y-auto flex flex-col md:flex-row max-h-[90vh] border border-tzeentch-cyan/30 no-scrollbar"
+        className="relative bg-tzeentch-bg w-full max-w-5xl rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-y-auto flex flex-col md:flex-row max-h-[95dvh] border border-tzeentch-cyan/30"
       >
         {/* Left: Cover & Actions */}
-        <div className="w-full md:w-1/3 bg-tzeentch-card/50 p-6 sm:p-8 flex flex-col items-center border-b md:border-b-0 md:border-r border-tzeentch-cyan/10">
-          <div className="w-48 sm:w-full aspect-[2/3] rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-tzeentch-cyan/20 mb-6 sm:mb-8">
+        <div className="w-full md:w-1/3 bg-tzeentch-card/50 p-4 sm:p-8 flex flex-col items-center border-b md:border-b-0 md:border-r border-tzeentch-cyan/10">
+          <div className="w-40 sm:w-full aspect-[2/3] rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-tzeentch-cyan/20 mb-6 sm:mb-8">
             {book.cover_url ? (
               <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
@@ -427,7 +427,7 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
 
         {/* Right: Metadata */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="p-6 sm:p-8 pb-4 flex justify-between items-start">
+          <div className="sticky top-0 z-20 bg-tzeentch-bg/95 backdrop-blur-md p-4 sm:p-8 pb-4 flex justify-between items-start border-b border-tzeentch-cyan/5 md:border-b-0">
             <div className="min-w-0 flex-1">
               {isEditing ? (
                 <div className="space-y-4">
@@ -476,7 +476,7 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
             </div>
           </div>
 
-          <div className="flex-1 p-6 sm:p-8 pt-4 space-y-6 sm:space-y-8">
+          <div className="flex-1 p-4 sm:p-8 pt-4 space-y-6 sm:space-y-8">
             {/* Rating, Format & Status */}
             <div className="flex flex-wrap gap-8">
               <div className="space-y-2">

@@ -265,7 +265,7 @@ export default function App() {
       <header className="z-10 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4 flex-shrink-0">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
               <img 
                 src="/tzeentch.png" 
                 alt="Tzeentch Logo" 
@@ -333,7 +333,7 @@ export default function App() {
 
       <main className="flex-1 flex flex-col min-h-0 max-w-6xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-8 overflow-hidden">
         {/* Tabs */}
-        <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-8 bg-tzeentch-card/50 p-1 rounded-xl w-full sm:w-fit mx-auto border border-tzeentch-cyan/10 overflow-x-auto no-scrollbar">
+        <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-8 bg-tzeentch-card/50 p-1 rounded-xl w-full sm:w-fit mx-auto border border-tzeentch-cyan/10 overflow-x-auto">
           {TABS.filter(tab => 
             tab.id === 'Overview' || 
             (uiConfig?.viewPreferences?.[tab.id as BookStatus] !== 'disabled' && 
@@ -399,7 +399,7 @@ export default function App() {
                   <div 
                     onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
                     tabIndex={0}
-                    className="flex-1 overflow-y-auto no-scrollbar pb-8 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg outline-none transition-shadow rounded-xl"
+                    className="flex-1 overflow-y-auto pb-8 focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg outline-none transition-shadow rounded-xl"
                   >
                     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                       {books.map((book) => (

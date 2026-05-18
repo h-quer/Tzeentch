@@ -594,7 +594,7 @@ export default function BookList({ books, onBookClick, onUpdate, columns, isMult
       ref={containerRef}
       onMouseEnter={() => containerRef.current?.focus({ preventScroll: true })}
       tabIndex={0}
-      className="flex-1 bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto relative no-scrollbar focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg transition-shadow outline-none"
+      className="flex-1 bg-tzeentch-card/30 rounded-2xl border border-tzeentch-cyan/10 overflow-auto relative focus-visible:ring-2 focus-visible:ring-tzeentch-cyan/50 focus-visible:ring-offset-4 focus-visible:ring-offset-tzeentch-bg transition-shadow outline-none"
     >
       <table className="w-full text-left border-collapse">
         <thead className="sticky top-0 z-20 bg-tzeentch-card/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.2)]">

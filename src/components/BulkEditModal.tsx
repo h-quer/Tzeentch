@@ -183,7 +183,7 @@ export default function BulkEditModal({ isOpen, onClose, selectedIds, selectedBo
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-md bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-2xl shadow-[0_0_50px_rgba(34,211,238,0.15)] overflow-hidden"
+            className="relative w-full max-w-md bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-2xl shadow-[0_0_50px_rgba(34,211,238,0.15)] overflow-y-auto max-h-[95dvh]"
           >
             {/* Header */}
             <div className="p-6 border-b border-tzeentch-cyan/20 bg-tzeentch-card/30 flex justify-between items-center">

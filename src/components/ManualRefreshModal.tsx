@@ -123,17 +123,17 @@ export default function ManualRefreshModal({ isOpen, onClose, book, onSuccess }:
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-tzeentch-bg w-full max-w-2xl rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] border border-tzeentch-cyan/30"
+        className="relative bg-tzeentch-bg w-full max-w-2xl rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col max-h-[95dvh] border border-tzeentch-cyan/30 overflow-y-auto"
       >
         {/* Header */}
-        <div className="px-6 sm:px-8 py-4 sm:py-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/50 backdrop-blur-md">
+        <div className="px-4 sm:px-8 py-4 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/50 backdrop-blur-md">
           <h2 className="text-xl sm:text-2xl font-bold text-tzeentch-cyan font-display tracking-tighter">MANUAL REFRESH</h2>
           <button onClick={onClose} className="p-2 hover:bg-tzeentch-cyan/10 rounded-full transition-colors">
             <X size={20} className="sm:w-[24px] sm:h-[24px] text-tzeentch-cyan/40" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-tzeentch-bg no-scrollbar">
+        <div className="flex-1 p-4 sm:p-8 bg-tzeentch-bg">
           {error && (
             <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-xl flex gap-4 mb-6 text-red-400 text-sm font-medium">
               <AlertTriangle size={20} className="shrink-0" />
@@ -307,7 +307,7 @@ export default function ManualRefreshModal({ isOpen, onClose, book, onSuccess }:
 
         {/* Footer */}
         {selectedResult && (
-          <div className="px-6 sm:px-8 py-4 sm:py-6 border-t border-tzeentch-cyan/10 bg-tzeentch-card/50 backdrop-blur-md flex justify-end gap-3">
+          <div className="px-4 sm:px-8 py-4 border-t border-tzeentch-cyan/10 bg-tzeentch-card/50 backdrop-blur-md flex justify-end gap-3">
             <button 
               onClick={() => setSelectedResult(null)}
               disabled={isUpdating}

@@ -42,6 +42,7 @@
 }
 
 @theme {
+  --breakpoint-xs: 475px;
   --color-tzeentch-bg: var(--color-tzeentch-bg);
   --color-tzeentch-card: var(--color-tzeentch-card);
   --color-tzeentch-cyan: var(--color-tzeentch-cyan);

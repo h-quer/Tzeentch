@@ -82,11 +82,11 @@ export default function GlobalSearch({ onSelectBook, isMobile }: GlobalSearchPro
             setQuery(e.target.value);
             setIsOpen(true);
           }}
-          className="w-24 sm:w-32 bg-tzeentch-card/50 border border-tzeentch-cyan/20 rounded-lg py-1 pl-7 pr-2 text-xs text-tzeentch-text focus:outline-none focus:border-tzeentch-cyan/50 transition-all z-10 relative"
+          className="w-32 sm:w-48 bg-tzeentch-card/50 border border-tzeentch-cyan/20 rounded-lg py-1 pl-7 pr-2 text-xs text-tzeentch-text focus:outline-none focus:border-tzeentch-cyan/50 transition-all z-10 relative"
           onFocus={() => query.trim() && setIsOpen(true)}
         />
         {isOpen && query.trim() && (
-          <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-xl shadow-[0_4px_20px_rgba(34,211,238,0.2)] z-50">
+          <div className="absolute right-0 mt-2 w-[85vw] max-w-xs max-h-96 overflow-y-auto bg-tzeentch-bg border border-tzeentch-cyan/30 rounded-xl shadow-[0_4px_20px_rgba(34,211,238,0.2)] z-50">
             {isLoading ? (
               <div className="p-4 text-center text-sm text-tzeentch-cyan/60">Searching...</div>
             ) : results.length > 0 ? (

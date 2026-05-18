@@ -345,16 +345,16 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-tzeentch-bg w-full max-w-2xl rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[90vh] border border-tzeentch-cyan/30"
+        className="relative bg-tzeentch-bg w-full max-w-2xl rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[95dvh] border border-tzeentch-cyan/30"
       >
-        <div className="p-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/30">
+        <div className="p-4 sm:p-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/30">
           <h2 className="text-xl font-bold text-tzeentch-cyan uppercase tracking-widest">Settings</h2>
           <button onClick={onClose} className="text-tzeentch-cyan/40 hover:text-tzeentch-magenta transition-colors">
             <X size={24} />
           </button>
         </div>
 
-        <div className="flex border-b border-tzeentch-cyan/10 overflow-x-auto scrollbar-hide">
+        <div className="sticky top-0 z-10 flex border-b border-tzeentch-cyan/10 overflow-x-auto scrollbar-hide bg-tzeentch-bg/95 backdrop-blur-md">
           <button
             onClick={() => setActiveTab('card')}
             className={`flex-1 min-w-[100px] py-4 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === 'card' ? 'text-tzeentch-cyan border-b-2 border-tzeentch-cyan bg-tzeentch-cyan/5' : 'text-tzeentch-text-faint hover:text-tzeentch-cyan/70'}`}
@@ -387,7 +387,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           <AnimatePresence mode="wait">
             {activeTab === 'list' ? (
               <motion.div key="list" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
@@ -604,7 +604,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
           </AnimatePresence>
         </div>
 
-        <div className="p-6 border-t border-tzeentch-cyan/10 bg-tzeentch-card/30 flex justify-end gap-4">
+        <div className="p-4 sm:p-6 border-t border-tzeentch-cyan/10 bg-tzeentch-card/30 flex justify-end gap-4">
           <button 
             onClick={onClose}
             className="px-6 py-2 rounded-xl text-sm font-bold text-tzeentch-cyan/60 hover:text-tzeentch-cyan transition-colors uppercase tracking-widest"
