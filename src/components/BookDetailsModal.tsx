@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Star, BookOpen, CheckCircle, Library, Bookmark, Trash2, Calendar, Hash, Building, Tag, Headphones, Book as BookIcon, Edit2, Save, Plus, RefreshCw, XCircle, Tablet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Book, BookStatus, BookFormat } from '../types';
+import { Book, BookStatus, BookFormat, BOOK_STATUSES, BOOK_FORMATS } from '../types';
 import RefreshMetadataModal from './RefreshMetadataModal';
 import ManualRefreshModal from './ManualRefreshModal';
 import ConfirmModal from './ConfirmModal';
@@ -513,9 +513,9 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
                     onChange={handleInputChange}
                     className="bg-tzeentch-bg text-tzeentch-cyan border border-tzeentch-cyan/30 rounded-lg px-3 py-1 font-bold"
                   >
-                    <option value="Print">Print</option>
-                    <option value="Ebook">Ebook</option>
-                    <option value="Audiobook">Audiobook</option>
+                    {BOOK_FORMATS.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
                   </select>
                 ) : (
                   <div className="flex items-center gap-2 text-tzeentch-cyan font-bold">
@@ -533,11 +533,9 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
                     onChange={handleInputChange}
                     className="bg-tzeentch-bg text-tzeentch-cyan border border-tzeentch-cyan/30 rounded-lg px-3 py-1 font-bold"
                   >
-                    {viewPreferences?.['Reading'] !== 'disabled' && <option value="Reading">Reading</option>}
-                    {viewPreferences?.['Read'] !== 'disabled' && <option value="Read">Read</option>}
-                    {viewPreferences?.['Backlog'] !== 'disabled' && <option value="Backlog">Backlog</option>}
-                    {viewPreferences?.['Wishlist'] !== 'disabled' && <option value="Wishlist">Wishlist</option>}
-                    {viewPreferences?.['Dropped'] !== 'disabled' && <option value="Dropped">Dropped</option>}
+                    {BOOK_STATUSES.filter(s => viewPreferences?.[s] !== 'disabled').map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
                 </div>
               )}
