@@ -1540,11 +1540,18 @@ async function startServer() {
         }
       })();
 
-      fs.unlinkSync(req.file!.path);
       res.json({ success: true, count: importedCount });
     } catch (error) {
       console.error('Goodreads import error:', error);
       res.status(500).json({ error: 'Failed to import Goodreads data' });
+    } finally {
+      if (req.file && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (err) {
+          console.error('Failed to delete temp file:', err);
+        }
+      }
     }
   });
 
@@ -1557,10 +1564,9 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static('dist'));
     app.get('*', (req, res) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
+      res.sendFile(path.resolve(__dirname, 'dist/index.html'));
     });
   }
 
