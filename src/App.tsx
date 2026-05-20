@@ -218,7 +218,7 @@ export default function App() {
     if (uiConfig) {
       fetchBooks({ reset: true });
     }
-  }, [activeTab, uiConfig?.sortFields, uiConfig?.viewPreferences]);
+  }, [activeTab, JSON.stringify(uiConfig?.sortFields), JSON.stringify(uiConfig?.viewPreferences)]);
 
   const handleBookUpdate = (updatedBook?: Book) => {
     fetchBooks({ reset: true });
