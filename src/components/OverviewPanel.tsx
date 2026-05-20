@@ -84,9 +84,9 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
         <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={stats.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#22d3ee" opacity={0.1} horizontal={false} />
-              <XAxis type="number" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
-              <YAxis dataKey="name" type="category" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} width={80} />
+               <CartesianGrid strokeDasharray="3 3" stroke="#22d3ee" opacity={0.1} horizontal={false} />
+               <XAxis type="number" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+               <YAxis dataKey="name" type="category" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} width={80} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#22d3ee', opacity: 0.1 }} />
               <Bar dataKey="value" fill="#22d3ee" radius={[0, 4, 4, 0]}>
                 {stats.categoryData.map((entry, index) => (
@@ -152,7 +152,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
             <BarChart data={stats.topTags} margin={{ top: 5, right: 5, left: -20, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#22d3ee" opacity={0.1} vertical={false} />
               <XAxis dataKey="name" stroke="#22d3ee" fontSize={10} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={50} />
-              <YAxis stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+              <YAxis stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#22d3ee', opacity: 0.1 }} />
               <Bar dataKey="value" fill="#22d3ee" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -194,7 +194,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
             <BarChart data={stats.topAuthors} margin={{ top: 5, right: 5, left: -20, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#c026d3" opacity={0.1} vertical={false} />
               <XAxis dataKey="name" stroke="#c026d3" fontSize={10} tickLine={false} axisLine={false} angle={-15} textAnchor="end" height={40} />
-              <YAxis stroke="#c026d3" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
+              <YAxis stroke="#c026d3" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#c026d3', opacity: 0.1 }} />
               <Bar dataKey="value" fill="#c026d3" radius={[4, 4, 0, 0]} />
             </BarChart>
