@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Book, BookStatus, UIConfig } from './types';
 import { BookOpen, Library, Bookmark, CheckCircle, Plus, Search, Settings, Info, BarChart2, RefreshCw, XCircle } from 'lucide-react';
@@ -262,7 +257,7 @@ export default function App() {
   return (
     <div className="h-dvh overflow-hidden flex flex-col text-tzeentch-text font-sans selection:bg-tzeentch-cyan/30">
       {/* Header */}
-      <header className="z-10 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4 flex-shrink-0">
+      <header className="relative z-30 glass-tzeentch border-b border-tzeentch-cyan/20 px-4 sm:px-6 py-4 flex-shrink-0">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
