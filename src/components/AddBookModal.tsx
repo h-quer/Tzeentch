@@ -12,7 +12,7 @@ interface AddBookModalProps {
 
 export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferences }: AddBookModalProps) {
   const [query, setQuery] = useState('');
-  const [source, setSource] = useState<'google' | 'audible' | 'goodreads'>('google');
+  const [source, setSource] = useState<'openlibrary' | 'audible' | 'goodreads'>('openlibrary');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
     setSelectedTags(selectedTags.filter(t => t !== tag));
   };
 
-  const handleSourceChange = (newSource: 'google' | 'audible' | 'goodreads') => {
+  const handleSourceChange = (newSource: 'openlibrary' | 'audible' | 'goodreads') => {
     setSource(newSource);
   };
 
@@ -261,13 +261,13 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
             <div className="space-y-6">
               {/* Source Selector */}
               <div className="flex gap-2 p-1 bg-tzeentch-card/50 rounded-xl border border-tzeentch-cyan/10">
-                {(['google', 'audible', 'goodreads'] as const).map((s) => (
+                {(['openlibrary', 'audible', 'goodreads'] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => handleSourceChange(s)}
                     className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${source === s ? 'bg-tzeentch-cyan text-tzeentch-bg' : 'text-tzeentch-cyan/40 hover:text-tzeentch-cyan'}`}
                   >
-                    {s === 'google' ? 'Google Books' : s}
+                    {s === 'openlibrary' ? 'Open Library' : s}
                   </button>
                 ))}
               </div>
@@ -317,10 +317,10 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                         setFormat('Audiobook');
                       }
 
-                      // Enrich Goodreads metadata if missing fields
-                      if (source === 'goodreads' && result.metadata_source) {
+                      // Enrich Goodreads, Open Library, or Google metadata if missing fields
+                      if ((source === 'goodreads' || source === 'openlibrary' || source === 'google') && result.metadata_source) {
                         try {
-                          const enrichRes = await fetch(`/api/metadata/enrich?source=goodreads&url=${encodeURIComponent(result.metadata_source)}`);
+                          const enrichRes = await fetch(`/api/metadata/enrich?source=${source}&url=${encodeURIComponent(result.metadata_source)}`);
                           if (enrichRes.ok) {
                             const details = await enrichRes.json();
                             if (details && Object.keys(details).length > 0) {
@@ -332,7 +332,9 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                                   pageCount: details.pageCount || prev.pageCount,
                                   publisher: details.publisher || prev.publisher,
                                   publishedDate: details.publishedDate || prev.publishedDate,
-                                  description: (details.description && (!prev.description || prev.description.length < details.description.length)) ? details.description : prev.description
+                                  description: (details.description && (!prev.description || prev.description.length < details.description.length)) ? details.description : prev.description,
+                                  series: details.series || prev.series,
+                                  series_number: details.series_number || prev.series_number
                                 };
                               });
                             }

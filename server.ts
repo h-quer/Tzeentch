@@ -55,7 +55,7 @@ async function downloadImage(url: string, dest: string, headers?: Record<string,
   fs.writeFileSync(dest, Buffer.from(buffer));
 }
 
-// --- Google Books API Helpers ---
+// --- Open Library API Helpers ---
 const searchCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
@@ -69,12 +69,12 @@ setInterval(() => {
   }
 }, 1000 * 60 * 15); // Every 15 minutes
 
-let googleRequestQueue: Promise<any> = Promise.resolve();
-const MIN_GAP = 3000; // 3 seconds gap between requests (conservative for unauthenticated)
+let openLibraryRequestQueue: Promise<any> = Promise.resolve();
+const OL_MIN_GAP = 1000; // 1 second gap between requests is safe and polite
 
-async function googleBooksFetch(url: string, signal?: AbortSignal): Promise<Response> {
+async function openLibraryFetch(url: string, signal?: AbortSignal): Promise<Response> {
   return new Promise((resolve, reject) => {
-    googleRequestQueue = googleRequestQueue.then(async () => {
+    openLibraryRequestQueue = openLibraryRequestQueue.then(async () => {
       if (signal?.aborted) {
         throw new Error('Aborted');
       }
@@ -83,21 +83,20 @@ async function googleBooksFetch(url: string, signal?: AbortSignal): Promise<Resp
         const response = await fetch(url, {
           signal,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Referer': 'https://books.google.com/'
+            'User-Agent': 'BookWarpTzeentchTracker/1.0 (Ebert.Marlon@gmail.com; Elias-Warp-Archive)'
           }
         });
         
-        // Always wait MIN_GAP before letting next request through
-        await new Promise(r => setTimeout(r, MIN_GAP));
+        // Wait OL_MIN_GAP before letting next request through
+        await new Promise(r => setTimeout(r, OL_MIN_GAP));
         return response;
       } catch (e: any) {
         if (e.name === 'AbortError' || e.message === 'Aborted') {
           throw e;
         }
-        console.error(`[Google Books] Fetch error:`, e);
+        console.error(`[Open Library] Fetch error:`, e);
         // Wait even on error to protect the queue
-        await new Promise(r => setTimeout(r, MIN_GAP));
+        await new Promise(r => setTimeout(r, OL_MIN_GAP));
         throw e;
       }
     }).then(resolve).catch((err) => {
@@ -105,7 +104,7 @@ async function googleBooksFetch(url: string, signal?: AbortSignal): Promise<Resp
         reject(err);
       } else {
         // Return a 500 response if it failed
-        console.error(`[Google Books] Request failed:`, err);
+        console.error(`[Open Library] Request failed:`, err);
         resolve(new Response(JSON.stringify({ error: err.message }), { status: 500 }));
       }
     });
@@ -157,6 +156,44 @@ function stripHtml(html?: string): string | null {
     .replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ');
   return text.trim() || null;
+}
+
+async function fetchAudibleProducts(query: string, limit: number = 10, signal?: AbortSignal) {
+  const normQ = query.trim();
+  const isAsinQuery = /^B0[A-Z0-9]{8}$/i.test(normQ) || /^[A-Z0-9]{10}$/i.test(normQ);
+
+  const domains = isAsinQuery 
+    ? ['api.audible.com', 'api.audible.co.uk', 'api.audible.de', 'api.audible.ca', 'api.audible.com.au'] 
+    : ['api.audible.com'];
+
+  const fetchResults = await Promise.all(
+    domains.map(async (domain) => {
+      try {
+        const url = `https://${domain}/1.0/catalog/products?keywords=${encodeURIComponent(normQ)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=${limit}`;
+        const res = await fetch(url, { signal });
+        if (res.ok) {
+          const data = await res.json();
+          return (data.products || []).filter((p: any) => p && p.title);
+        }
+      } catch (e) {
+        console.error(`[Audible] Fetch error from ${domain}:`, e);
+      }
+      return [];
+    })
+  );
+
+  const seenAsins = new Set<string>();
+  const merged: any[] = [];
+  
+  for (const list of fetchResults) {
+    for (const prod of list) {
+      if (prod && prod.asin && !seenAsins.has(prod.asin)) {
+        seenAsins.add(prod.asin);
+        merged.push(prod);
+      }
+    }
+  }
+  return merged;
 }
 
 async function fetchGoodreadsDetails(bookUrl: string) {
@@ -238,65 +275,333 @@ async function fetchCoverUrl(title: string, author: string, isbn?: string, goodr
       return undefined;
     }
 
-    let query = '';
+    let url = '';
     if (isbn) {
-      query = `isbn:${isbn.replace(/\D/g, '')}`;
-    } else {
-      const cleanTitle = title.replace(/\s*\(.*?\)\s*$/, '').trim();
-      query = `intitle:"${cleanTitle}" inauthor:"${author}"`;
+      const cleanIsbn = isbn.replace(/\D/g, '');
+      if (cleanIsbn) {
+        url = `https://openlibrary.org/search.json?isbn=${encodeURIComponent(cleanIsbn)}&limit=1`;
+      }
     }
     
-    console.log(`[Google Books] Fetching cover with URL: https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
-    let res = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
+    if (!url) {
+      const cleanTitle = title.replace(/\s*\(.*?\)\s*$/, '').trim();
+      url = `https://openlibrary.org/search.json?title=${encodeURIComponent(cleanTitle)}&author=${encodeURIComponent(author)}&limit=1`;
+    }
     
-      if (!res.ok) {
-        if (res.status === 429) {
-          console.warn(`[Google Books] Rate limited (429) during cover fetch.`);
-        } else {
-          console.error(`[Google Books] Cover fetch API error (${res.status})`);
-        }
-        return undefined;
-      }
+    console.log(`[Open Library] Fetching cover with URL: ${url}`);
+    let res = await openLibraryFetch(url);
+    
+    if (!res.ok) {
+      console.error(`[Open Library] Cover fetch API error (${res.status})`);
+      return undefined;
+    }
 
     let data = await res.json();
     
     // Retry with broader search if no results and not searching by ISBN
-    if ((!data.items || data.items.length === 0) && !isbn) {
-      const surname = getSurname(author);
-      if (surname !== author && author !== 'Unknown Author') {
-        const cleanTitle = title.replace(/\s*\(.*?\)\s*$/, '').trim();
-        query = `intitle:"${cleanTitle}" inauthor:"${surname}"`;
-        console.log(`[Google Books] Retrying cover fetch with broader query: ${query}`);
-        res = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
-        if (res.ok) data = await res.json();
-      }
-      
-      // Final fallback: just title and author keywords
-      if (!data.items || data.items.length === 0) {
-        const cleanTitle = title.replace(/\s*\(.*?\)\s*$/, '').trim();
-        query = `${cleanTitle} ${author === 'Unknown Author' ? '' : author}`;
-        console.log(`[Google Books] Final fallback cover fetch query: ${query}`);
-        res = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query.trim())}&maxResults=1`);
-        if (res.ok) data = await res.json();
-      }
+    if ((!data.docs || data.docs.length === 0) && !isbn) {
+      const cleanTitle = title.replace(/\s*\(.*?\)\s*$/, '').trim();
+      console.log(`[Open Library] Retrying cover fetch with search title only: ${cleanTitle}`);
+      url = `https://openlibrary.org/search.json?q=${encodeURIComponent(cleanTitle)}&limit=1`;
+      res = await openLibraryFetch(url);
+      if (res.ok) data = await res.json();
     }
 
-    if (data.items && data.items.length > 0) {
-      const volumeInfo = data.items[0].volumeInfo;
-      let coverUrl = volumeInfo.imageLinks?.extraLarge || 
-                     volumeInfo.imageLinks?.large || 
-                     volumeInfo.imageLinks?.medium || 
-                     volumeInfo.imageLinks?.thumbnail;
-      
-      if (coverUrl) {
-        coverUrl = coverUrl.replace('http:', 'https:');
-        return coverUrl.replace('&zoom=1', '&zoom=3');
+    if (data.docs && data.docs.length > 0) {
+      const doc = data.docs[0];
+      if (doc.cover_i) {
+        return `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+      } else if (doc.isbn && doc.isbn.length > 0) {
+        return `https://covers.openlibrary.org/b/isbn/${doc.isbn[0]}-L.jpg`;
       }
     }
   } catch (error) {
     console.error('Failed to fetch cover URL:', error);
   }
   return undefined;
+}
+
+async function fetchOldestEdition(workKey: string): Promise<any> {
+  try {
+    const cleanKey = workKey.replace(/^\/+/, '');
+    console.log(`[Open Library] Fetching editions list for work: https://openlibrary.org/${cleanKey}/editions.json`);
+    const res = await openLibraryFetch(`https://openlibrary.org/${cleanKey}/editions.json?limit=100`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const entries = data.entries || [];
+    if (entries.length === 0) return null;
+
+    function parseYear(dateStr?: string): number {
+      if (!dateStr) return Infinity;
+      const match = dateStr.match(/\b(17|18|19|20)\d{2}\b/);
+      return match ? parseInt(match[0], 10) : Infinity;
+    }
+
+    const sorted = [...entries].sort((a, b) => {
+      const yearA = parseYear(a.publish_date);
+      const yearB = parseYear(b.publish_date);
+      
+      if (yearA !== yearB) {
+        return yearA - yearB; // Earlier year is better
+      }
+      
+      // Prefer having publisher
+      const hasPubA = (a.publishers && a.publishers.length > 0) ? 1 : 0;
+      const hasPubB = (b.publishers && b.publishers.length > 0) ? 1 : 0;
+      if (hasPubA !== hasPubB) {
+        return hasPubB - hasPubA;
+      }
+      
+      // Prefer having isbn
+      const hasIsbnA = (a.isbn_13 || a.isbn_10) ? 1 : 0;
+      const hasIsbnB = (b.isbn_13 || b.isbn_10) ? 1 : 0;
+      if (hasIsbnA !== hasIsbnB) {
+        return hasIsbnB - hasIsbnA;
+      }
+
+      return 0;
+    });
+
+    return sorted[0] || null;
+  } catch (error) {
+    console.error('[Open Library] Error in fetchOldestEdition:', error);
+  }
+  return null;
+}
+
+async function fetchOpenLibraryData(urlOrKey: string, book: any): Promise<Partial<Book> | null> {
+  let workKey: string | null = null;
+  let editionKey: string | null = null;
+  let isbn: string | null = null;
+
+  // Analyze urlOrKey (could be metadata_source)
+  if (urlOrKey) {
+    const workMatch = urlOrKey.match(/\/works\/(OL\d+[A-Z])/i);
+    const bookMatch = urlOrKey.match(/\/books\/(OL\d+[A-Z])/i);
+    const isbnMatch = urlOrKey.match(/\/isbn\/(\d+)/i);
+    
+    if (workMatch) workKey = `/works/${workMatch[1]}`;
+    if (bookMatch) editionKey = `/books/${bookMatch[1]}`;
+    if (isbnMatch) isbn = isbnMatch[1];
+  }
+
+  // If we don't have enough keys but we have book's isbn in database
+  if (!isbn && book?.isbn) {
+    isbn = book.isbn.replace(/\D/g, '');
+  }
+
+  const explicitEdition = !!(urlOrKey && (urlOrKey.includes('/books/') || urlOrKey.includes('/isbn/')));
+  let editionData: any = null;
+  let workData: any = null;
+
+  // 1. Fetch Edition Data (if we have editionKey or isbn)
+  if (editionKey) {
+    try {
+      console.log(`[Open Library] Fetching edition details: https://openlibrary.org${editionKey}.json`);
+      const res = await openLibraryFetch(`https://openlibrary.org${editionKey}.json`);
+      if (res.ok) editionData = await res.json();
+    } catch (err) {
+      console.error('[Open Library] Error fetching edition key:', err);
+    }
+  } else if (isbn) {
+    try {
+      console.log(`[Open Library] Fetching edition details by ISBN: https://openlibrary.org/isbn/${isbn}.json`);
+      const res = await openLibraryFetch(`https://openlibrary.org/isbn/${isbn}.json`);
+      if (res.ok) editionData = await res.json();
+    } catch (err) {
+      console.error('[Open Library] Error fetching isbn details:', err);
+    }
+  }
+
+  // If we fetched editionData, find workKey inside it
+  if (editionData && editionData.works && editionData.works.length > 0) {
+    workKey = editionData.works[0].key;
+  }
+
+  // 2. Fetch Work Data (if we have workKey)
+  if (workKey) {
+    try {
+      console.log(`[Open Library] Fetching work details: https://openlibrary.org${workKey}.json`);
+      const res = await openLibraryFetch(`https://openlibrary.org${workKey}.json`);
+      if (res.ok) workData = await res.json();
+    } catch (err) {
+      console.error('[Open Library] Error fetching work key details:', err);
+    }
+
+    // Now fetch the oldest/primary edition to ensure we get the original publisher and year!
+    const oldestEd = await fetchOldestEdition(workKey);
+    if (oldestEd) {
+      if (!explicitEdition) {
+        editionData = oldestEd;
+      } else {
+        editionData = editionData || oldestEd;
+      }
+    }
+  }
+
+  // 3. Fallback to search.json if we still don't have edition or work data
+  if (!editionData && !workData) {
+    let searchUrl = '';
+    const fieldsParam = 'key,title,author_name,cover_i,isbn,publisher,publish_date,first_publish_year,number_of_pages,number_of_pages_median,subject,series_name,series_position';
+    if (isbn) {
+      searchUrl = `https://openlibrary.org/search.json?isbn=${encodeURIComponent(isbn)}&fields=${fieldsParam}&limit=1`;
+    } else {
+      const cleanTitle = book.title.replace(/\s*\(.*?\)\s*$/, '').trim();
+      searchUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(cleanTitle)}&author=${encodeURIComponent(book.author)}&fields=${fieldsParam}&limit=1`;
+    }
+
+    console.log(`[Open Library] Fallback to search.json: ${searchUrl}`);
+    try {
+      const res = await openLibraryFetch(searchUrl);
+      if (res.ok) {
+        const searchResult = await res.json();
+        if (searchResult.docs && searchResult.docs.length > 0) {
+          const doc = searchResult.docs[0];
+          
+          if (doc.key) workKey = doc.key;
+          if (doc.edition_key && doc.edition_key.length > 0) editionKey = `/books/${doc.edition_key[0]}`;
+          
+          // Let's fetch them now for maximum completeness
+          if (editionKey) {
+            const edRes = await openLibraryFetch(`https://openlibrary.org${editionKey}.json`);
+            if (edRes.ok) editionData = await edRes.json();
+          }
+          if (workKey) {
+            const wkRes = await openLibraryFetch(`https://openlibrary.org${workKey}.json`);
+            if (wkRes.ok) workData = await wkRes.json();
+          }
+
+          // Direct creation from search document if detail fetches fail
+          if (!editionData && !workData) {
+            console.log(`[Open Library] Creating metadata directly from search document`);
+            let coverUrl = undefined;
+            if (doc.cover_i) {
+              coverUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+            } else if (doc.isbn && doc.isbn.length > 0) {
+              coverUrl = `https://covers.openlibrary.org/b/isbn/${doc.isbn[0]}-L.jpg`;
+            }
+
+            let seriesName = doc.series_name?.[0] || undefined;
+            let seriesNumber = doc.series_position?.[0] || undefined;
+            if (!seriesName && doc.series && doc.series.length > 0) {
+              const seriesInfo = splitSeries(doc.series[0]);
+              seriesName = seriesInfo.series;
+              seriesNumber = seriesInfo.series_number;
+            }
+
+            return {
+              title: doc.title,
+              author: doc.author_name?.join(', ') || 'Unknown Author',
+              description: doc.subject?.slice(0, 10).join(', ') || null,
+              published_date: doc.first_publish_year?.toString() || doc.publish_date?.[0] || null,
+              page_count: doc.number_of_pages_median || doc.number_of_pages || null,
+              publisher: doc.publisher?.[0] || null,
+              isbn: doc.isbn?.find((i: string) => i.replace(/\D/g, '').length === 13) || doc.isbn?.[0] || null,
+              asin: doc.isbn?.[0] ? null : undefined,
+              cover_url: coverUrl,
+              metadata_source: `https://openlibrary.org${doc.key || ''}`,
+              tags: doc.subject?.slice(0, 10).join(', ') || null,
+              series: seriesName || null,
+              series_number: seriesNumber || null,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Open Library] Fallback search error:', err);
+    }
+  }
+
+  // Assemble from rich editionData and workData
+  if (editionData || workData) {
+    const title = editionData?.title || workData?.title || book.title;
+    const descriptionObject = workData?.description || editionData?.description;
+    let description = null;
+    if (descriptionObject) {
+      if (typeof descriptionObject === 'string') {
+        description = descriptionObject;
+      } else if (descriptionObject.value) {
+        description = descriptionObject.value;
+      }
+    }
+
+    let coverUrl = undefined;
+    if (editionData?.covers && editionData.covers.length > 0 && editionData.covers[0] > 0) {
+      coverUrl = `https://covers.openlibrary.org/b/id/${editionData.covers[0]}-L.jpg`;
+    } else if (workData?.covers && workData.covers.length > 0 && workData.covers[0] > 0) {
+      coverUrl = `https://covers.openlibrary.org/b/id/${workData.covers[0]}-L.jpg`;
+    } else if (editionData?.isbn_13 && editionData.isbn_13.length > 0) {
+      coverUrl = `https://covers.openlibrary.org/b/isbn/${editionData.isbn_13[0]}-L.jpg`;
+    } else if (editionData?.isbn_10 && editionData.isbn_10.length > 0) {
+      coverUrl = `https://covers.openlibrary.org/b/isbn/${editionData.isbn_10[0]}-L.jpg`;
+    }
+
+    // Series info lookup
+    let seriesName = undefined;
+    let seriesNumber = undefined;
+    const candidateSeries = editionData?.series || workData?.series;
+    if (Array.isArray(candidateSeries) && candidateSeries.length > 0) {
+      const firstSeries = candidateSeries[0];
+      if (typeof firstSeries === 'string') {
+        const split = splitSeries(firstSeries);
+        seriesName = split.series;
+        seriesNumber = split.series_number;
+      } else if (firstSeries && typeof firstSeries === 'object') {
+        // e.g. { series: { key: '/series/OL326110L' }, position: '1' }
+        seriesNumber = firstSeries.position;
+        const seriesKey = firstSeries.series?.key;
+        if (seriesKey) {
+          try {
+            console.log(`[Open Library] Fetching named series key: https://openlibrary.org${seriesKey}.json`);
+            const seriesRes = await openLibraryFetch(`https://openlibrary.org${seriesKey}.json`);
+            if (seriesRes.ok) {
+              const seriesData = await seriesRes.json();
+              if (seriesData && seriesData.name) {
+                seriesName = seriesData.name;
+              }
+            }
+          } catch (err) {
+            console.error('[Open Library] Error fetching series key name:', err);
+          }
+        }
+      }
+    } else if (typeof candidateSeries === 'string') {
+      const split = splitSeries(candidateSeries);
+      seriesName = split.series;
+      seriesNumber = split.series_number;
+    }
+
+    // Subjects/Tags mapping
+    const subjects = workData?.subjects || editionData?.subjects || [];
+    const tags = subjects.length > 0 ? subjects.slice(0, 10).join(', ') : null;
+
+    // ISBN mapping
+    const isbn13 = editionData?.isbn_13?.[0] || null;
+    const isbn10 = editionData?.isbn_10?.[0] || null;
+
+    let authorName = undefined;
+    if (editionData?.by_statement) {
+      authorName = editionData.by_statement;
+    }
+
+    return {
+      title: title,
+      author: authorName || book.author,
+      description: description ? stripHtml(description) : null,
+      published_date: editionData?.publish_date || workData?.first_publish_date || null,
+      page_count: editionData?.number_of_pages || null,
+      publisher: editionData?.publishers?.[0] || null,
+      isbn: isbn13 || isbn10 || isbn || null,
+      asin: (isbn13 || isbn10) ? null : undefined,
+      cover_url: coverUrl,
+      metadata_source: `https://openlibrary.org${workKey || editionKey || ''}`,
+      tags: tags,
+      series: seriesName || null,
+      series_number: seriesNumber || null,
+    };
+  }
+
+  return null;
 }
 
 async function performMetadataRefresh(bookId: number, userProvider?: string, specificSourceUrl?: string): Promise<{ success: boolean, error?: string }> {
@@ -308,118 +613,23 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
 
   if (!provider) {
     const source = sourceUrl.toLowerCase();
-    if (source.includes('google')) provider = 'google';
+    if (source.includes('google')) provider = 'openlibrary'; // Map legacy google books references to openlibrary
+    else if (source.includes('openlibrary') || source.includes('openlib')) provider = 'openlibrary';
     else if (source.includes('audible')) provider = 'audible';
     else if (source.includes('goodreads')) provider = 'goodreads';
-    else provider = 'google'; // Fallback
+    else provider = 'openlibrary'; // Fallback
+  }
+
+  // Set provider 'google' to 'openlibrary' to fully migrate
+  if (provider === 'google') {
+    provider = 'openlibrary';
   }
 
   try {
     let metadata: Partial<Book> | null = null;
     
-    if (provider === 'google') {
-      let googleId = null;
-      if (sourceUrl.includes('id=')) {
-        const match = sourceUrl.match(/[?&]id=([^&]+)/);
-        if (match) googleId = match[1];
-      } else if (sourceUrl.includes('books/v1/volumes/')) {
-        const parts = sourceUrl.split('volumes/');
-        if (parts.length > 1) googleId = parts[1].split('?')[0];
-      }
-
-      let url = '';
-      if (googleId) {
-        url = `https://www.googleapis.com/books/v1/volumes/${googleId}`;
-      } else {
-        let query = '';
-        if (book.isbn) {
-          query = `isbn:${book.isbn.replace(/\D/g, '')}`;
-        } else {
-          // Clean title: remove series info in parentheses
-          const cleanTitle = book.title.replace(/\s*\(.*?\)\s*$/, '').trim();
-          query = `intitle:"${cleanTitle}" inauthor:"${book.author}"`;
-        }
-        url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`;
-      }
-      
-      console.log(`[Google Books] Refreshing metadata with URL: ${url}`);
-      let response = await googleBooksFetch(url);
-      
-      if (!response.ok) {
-        if (response.status === 429) {
-          console.warn(`[Google Books] Rate limited (429) during metadata refresh.`);
-          return { success: false, error: 'Rate limited by Google Books API. Please try again later.' };
-        }
-        const errorText = await response.text();
-        console.error(`[Google Books] Metadata API error (${response.status}): ${errorText}`);
-        return { success: false, error: `Google Books API returned ${response.status}` };
-      }
-
-      let data = await response.json();
-      
-      let item = data;
-      if (data.items && data.items.length > 0) {
-        item = data.items[0];
-      }
-
-      // Retry with broader search if no results and not searching by ISBN/ID
-      if (!googleId && (!data.items || data.items.length === 0) && !book.isbn) {
-        const surname = getSurname(book.author);
-        if (surname !== book.author && book.author !== 'Unknown Author') {
-          const cleanTitle = book.title.replace(/\s*\(.*?\)\s*$/, '').trim();
-          let query = `intitle:"${cleanTitle}" inauthor:"${surname}"`;
-          console.log(`[Google Books] Retrying with broader query: ${query}`);
-          response = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
-          if (response.ok) {
-            data = await response.json();
-            if (data.items && data.items.length > 0) {
-              item = data.items[0];
-            }
-          }
-        }
-      }  
-        // Final fallback: just title and author keywords
-        if (!item.volumeInfo && (!data.items || data.items.length === 0)) {
-          const cleanTitle = book.title.replace(/\s*\(.*?\)\s*$/, '').trim();
-          let query = `${cleanTitle} ${book.author === 'Unknown Author' ? '' : book.author}`;
-          console.log(`[Google Books] Final fallback query: ${query}`);
-          response = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query.trim())}&maxResults=1`);
-          if (response.ok) {
-            data = await response.json();
-            if (data.items && data.items.length > 0) {
-              item = data.items[0];
-            }
-          }
-        }
-
-      if (item.volumeInfo) {
-        const info = item.volumeInfo;
-        const identifiers = info.industryIdentifiers || [];
-        const isbn13 = identifiers.find((id: any) => id.type === 'ISBN_13')?.identifier;
-        const isbn10 = identifiers.find((id: any) => id.type === 'ISBN_10')?.identifier;
-        
-        let coverUrl = info.imageLinks?.extraLarge || info.imageLinks?.large || info.imageLinks?.medium || info.imageLinks?.thumbnail;
-        if (coverUrl) {
-          coverUrl = coverUrl.replace('http:', 'https:');
-          if (coverUrl.includes('zoom=1')) {
-            coverUrl = coverUrl.replace('&zoom=1', '&zoom=3');
-          }
-        }
-
-        metadata = {
-          title: info.title,
-          author: info.authors?.join(', ') || 'Unknown Author',
-          description: stripHtml(info.description),
-          published_date: info.publishedDate,
-          page_count: info.pageCount,
-          publisher: info.publisher,
-          isbn: isbn13 || isbn10 || null,
-          asin: (isbn13 || isbn10) ? null : undefined,
-          cover_url: coverUrl,
-          metadata_source: info.infoLink,
-          tags: info.categories?.join(', ') || null
-        };
-      }
+    if (provider === 'openlibrary') {
+      metadata = await fetchOpenLibraryData(sourceUrl, book);
     } else if (provider === 'audible') {
       let asin = null;
       if (sourceUrl.includes('/pd/')) {
@@ -434,26 +644,18 @@ async function performMetadataRefresh(bookId: number, userProvider?: string, spe
       if (asin) query = asin;
       else if (book.asin) query = book.asin;
       
-      let response = await fetch(`https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(query)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=1`);
-      if (!response.ok) {
-        console.error(`[Audible] API error (${response.status})`);
-        return { success: false, error: `Audible API returned ${response.status}` };
-      }
-      let data = await response.json();
+      let products = await fetchAudibleProducts(query, 1);
       
-      if ((!data.products || data.products.length === 0) && !asin && !book.asin) {
+      if (products.length === 0 && !asin && !book.asin) {
         const surname = getSurname(book.author);
         if (surname !== book.author) {
           query = `${book.title} ${surname}`;
-          response = await fetch(`https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(query)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=1`);
-          if (response.ok) {
-            data = await response.json();
-          }
+          products = await fetchAudibleProducts(query, 1);
         }
       }
 
-      if (data.products && data.products.length > 0) {
-        const product = data.products[0];
+      if (products.length > 0) {
+        const product = products[0];
         const author = product.authors?.map((a: any) => a.name).join(', ') || 'Unknown Author';
         const narrator = product.narrators?.map((n: any) => n.name).join(', ');
         
@@ -1028,7 +1230,7 @@ async function startServer() {
     // that might overwrite the user's manual selection.
     if (req.body.metadata_source && oldBook && req.body.metadata_source !== oldBook.metadata_source && !isManualSelection) {
       const source = req.body.metadata_source.toLowerCase();
-      const isSupported = source.includes('goodreads.com') || source.includes('audible.com') || source.includes('google.com');
+      const isSupported = source.includes('goodreads.com') || source.includes('audible.com') || source.includes('google.com') || source.includes('openlibrary.org');
       
       if (isSupported) {
         try {
@@ -1170,6 +1372,18 @@ async function startServer() {
         const details = await fetchGoodreadsDetails(url);
         return res.json(details || {});
       }
+      if (source === 'openlibrary' || source === 'google') {
+        const details = await fetchOpenLibraryData(url, {});
+        return res.json({
+          isbn: details?.isbn || null,
+          pageCount: details?.page_count || null,
+          publisher: details?.publisher || null,
+          publishedDate: details?.published_date || null,
+          description: details?.description || null,
+          series: details?.series || null,
+          series_number: details?.series_number || null,
+        });
+      }
       res.status(400).json({ error: 'Unsupported source' });
     } catch (error) {
       console.error('Enrichment error:', error);
@@ -1193,7 +1407,7 @@ async function startServer() {
 
   // Search API (Supports multiple sources)
   app.get('/api/search', async (req, res) => {
-    const { q, source = 'google' } = req.query;
+    let { q, source = 'openlibrary' } = req.query;
     if (!q) return res.status(400).json({ error: 'Query required' });
 
     const abortController = new AbortController();
@@ -1204,79 +1418,189 @@ async function startServer() {
     try {
       let results: SearchResult[] = [];
 
-      if (source === 'google') {
-        const cacheKey = `google:${q}`;
+      const normalizedQ = (q as string).replace(/[\s-]/g, '');
+      const isOnlyNumbers = /^\d+$/.test(normalizedQ) || /^\d{9}[\dX]$/i.test(normalizedQ);
+      const trimmedQ = (q as string).trim();
+      const isAsin = /^B0[A-Z0-9]{8}$/i.test(trimmedQ);
+
+      if (source === 'openlibrary' || source === 'google') {
+        const cacheKey = `openlibrary:${q}`;
         const cached = searchCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-          console.log(`[Google Books] Returning cached results for: ${q}`);
+          console.log(`[Open Library] Returning cached results for: ${q}`);
           return res.json(cached.data);
         }
 
-        console.log(`[Google Books] Searching for: ${q}`);
-        let response = await googleBooksFetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q as string)}&maxResults=20`, abortController.signal);
-        
-        if (!response.ok) {
-          if (response.status === 429) {
-            console.warn(`[Google Books] Rate limited (429) during search.`);
-            return res.status(429).json({ error: 'Book search is temporarily rate-limited. Please wait a few minutes and try again.' });
+        console.log(`[Open Library] Searching for: ${q}`);
+
+        const isbnMatch = (q as string).match(/^isbn:\s*([a-zA-Z0-9]+)/i);
+        const cleanIsbnValue = isOnlyNumbers ? normalizedQ : (isbnMatch ? isbnMatch[1].replace(/[\s-]/g, '') : null);
+
+        let exactEditionFound = false;
+
+        if (cleanIsbnValue) {
+          try {
+            console.log(`[Open Library] Performing exact edition lookup for ISBN: ${cleanIsbnValue}`);
+            const edRes = await openLibraryFetch(`https://openlibrary.org/isbn/${cleanIsbnValue}.json`, abortController.signal);
+            if (edRes.ok) {
+              const edData = await edRes.json();
+              
+              const workKey = edData.works?.[0]?.key;
+              let workData: any = null;
+              let authorName = edData.by_statement || 'Unknown Author';
+              let description = null;
+              let categories = null;
+              let seriesName = null;
+              let seriesNumber = null;
+
+              if (workKey) {
+                const wkRes = await openLibraryFetch(`https://openlibrary.org${workKey}.json`, abortController.signal);
+                if (wkRes.ok) {
+                  workData = await wkRes.json();
+                  const descObj = workData.description;
+                  if (descObj) {
+                    description = typeof descObj === 'string' ? descObj : (descObj.value || null);
+                  }
+                  if (workData.subjects && workData.subjects.length > 0) {
+                    categories = workData.subjects.slice(0, 5).join(', ');
+                  }
+                  if (!edData.by_statement && workData.authors?.[0]?.author?.key) {
+                    const authRes = await openLibraryFetch(`https://openlibrary.org${workData.authors[0].author.key}.json`, abortController.signal);
+                    if (authRes.ok) {
+                      const authData = await authRes.json();
+                      if (authData.name) {
+                        authorName = authData.name;
+                      }
+                    }
+                  }
+                }
+              }
+
+              let coverUrl = undefined;
+              if (edData.covers && edData.covers.length > 0 && edData.covers[0] > 0) {
+                coverUrl = `https://covers.openlibrary.org/b/id/${edData.covers[0]}-L.jpg`;
+              } else {
+                coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbnValue}-L.jpg`;
+              }
+
+              const candidateSeries = edData.series || workData?.series;
+              if (Array.isArray(candidateSeries) && candidateSeries.length > 0) {
+                const firstSeries = candidateSeries[0];
+                if (typeof firstSeries === 'string') {
+                  const split = splitSeries(firstSeries);
+                  seriesName = split.series;
+                  seriesNumber = split.series_number;
+                } else if (firstSeries && typeof firstSeries === 'object') {
+                  seriesNumber = firstSeries.position;
+                  const seriesKey = firstSeries.series?.key;
+                  if (seriesKey) {
+                    try {
+                      const sRes = await openLibraryFetch(`https://openlibrary.org${seriesKey}.json`, abortController.signal);
+                      if (sRes.ok) {
+                        const sData = await sRes.json();
+                        if (sData.name) seriesName = sData.name;
+                      }
+                    } catch (e) {}
+                  }
+                }
+              } else if (typeof candidateSeries === 'string') {
+                const split = splitSeries(candidateSeries);
+                seriesName = split.series;
+                seriesNumber = split.series_number;
+              }
+
+              results = [{
+                title: edData.title,
+                author: authorName,
+                isbn: cleanIsbnValue,
+                asin: null,
+                cover_url: coverUrl,
+                description: description ? stripHtml(description) : (categories || null),
+                pageCount: edData.number_of_pages || null,
+                publishedDate: edData.publish_date || null,
+                publisher: edData.publishers?.[0] || null,
+                categories: categories,
+                metadata_source: `https://openlibrary.org${edData.key}`,
+                series: seriesName || null,
+                series_number: seriesNumber || null,
+              }];
+              exactEditionFound = true;
+            }
+          } catch (err) {
+            console.error('[Open Library] Exact edition fetch error, falling back:', err);
           }
-          const errorText = await response.text();
-          console.error(`[Google Books] Search API error (${response.status}): ${errorText}`);
-          return res.json([]);
         }
 
-        const data = await response.json();
-        
-        results = (data.items || []).map((item: any) => {
-          const info = item.volumeInfo;
-          const identifiers = info.industryIdentifiers || [];
-          const isbn13 = identifiers.find((id: any) => id.type === 'ISBN_13')?.identifier;
-          const isbn10 = identifiers.find((id: any) => id.type === 'ISBN_10')?.identifier;
-          
-          // Get high quality cover if possible
-          let coverUrl = info.imageLinks?.extraLarge || info.imageLinks?.large || info.imageLinks?.medium || info.imageLinks?.thumbnail;
-          if (coverUrl) {
-            coverUrl = coverUrl.replace('http:', 'https:');
-            if (coverUrl.includes('zoom=1')) {
-              coverUrl = coverUrl.replace('&zoom=1', '&zoom=3');
-            }
+        if (!exactEditionFound) {
+          const fieldsParam = 'key,title,author_name,cover_i,isbn,publisher,publish_date,first_publish_year,number_of_pages,number_of_pages_median,subject,series_name,series_position';
+          let url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q as string)}&fields=${fieldsParam}&limit=20`;
+          if (cleanIsbnValue) {
+            url = `https://openlibrary.org/search.json?isbn=${encodeURIComponent(cleanIsbnValue)}&fields=${fieldsParam}&limit=20`;
           }
+
+          let response = await openLibraryFetch(url, abortController.signal);
           
-          return {
-            title: info.title,
-            author: info.authors?.join(', ') || 'Unknown Author',
-            isbn: isbn13 || isbn10 || null,
-            asin: null,
-            cover_url: coverUrl,
-            description: stripHtml(info.description),
-            pageCount: info.pageCount,
-            publishedDate: info.publishedDate,
-            publisher: info.publisher,
-            categories: info.categories?.join(', ') || null,
-            metadata_source: info.infoLink,
-            ...splitSeries(info.seriesInfo?.bookDisplayNumber ? `${info.title} #${info.seriesInfo.bookDisplayNumber}` : undefined)
-          };
-        });
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Open Library] Search API error (${response.status}): ${errorText}`);
+            return res.json([]);
+          }
+
+          const data = await response.json();
+          
+          results = (data.docs || []).map((doc: any) => {
+            let coverUrl = undefined;
+            if (doc.cover_i) {
+              coverUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+            } else if (doc.isbn && doc.isbn.length > 0) {
+              coverUrl = `https://covers.openlibrary.org/b/isbn/${doc.isbn[0]}-L.jpg`;
+            }
+            
+            const isbnVal = doc.isbn?.find((i: string) => i.replace(/\D/g, '').length === 13) || doc.isbn?.[0] || null;
+            const pubDate = doc.first_publish_year?.toString() || doc.publish_date?.[0] || null;
+            
+            let seriesName = doc.series_name?.[0] || undefined;
+            let seriesNumber = doc.series_position?.[0] || undefined;
+            if (!seriesName && doc.series && doc.series.length > 0) {
+              const split = splitSeries(doc.series[0]);
+              seriesName = split.series;
+              seriesNumber = split.series_number;
+            }
+
+            return {
+              title: doc.title,
+              author: doc.author_name?.join(', ') || 'Unknown Author',
+              isbn: isbnVal,
+              asin: null,
+              cover_url: coverUrl,
+              description: doc.subject?.slice(0, 10).join(', ') || null,
+              pageCount: doc.number_of_pages_median || doc.number_of_pages || null,
+              publishedDate: pubDate,
+              publisher: doc.publisher?.[0] || null,
+              categories: doc.subject?.slice(0, 5).join(', ') || null,
+              metadata_source: `https://openlibrary.org${doc.key || ''}`,
+              series: seriesName || null,
+              series_number: seriesNumber || null,
+            };
+          });
+        }
 
         // Cache the results
         searchCache.set(cacheKey, { data: results, timestamp: Date.now() });
       } else if (source === 'audible') {
-        const response = await fetch(`https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(q as string)}&response_groups=product_attrs,product_desc,contributors,media,series,category_ladders&num_results=10`, {
-          signal: abortController.signal
-        });
-        
-        if (!response.ok) {
-          console.error(`[Audible] Search API error (${response.status})`);
-          return res.status(response.status).json({ error: 'Audible search failed' });
+        const requestedAsin = isAsin ? trimmedQ : null;
+
+        let searchKeyword = q as string;
+        if (requestedAsin) {
+          searchKeyword = requestedAsin;
         }
+
+        const products = await fetchAudibleProducts(searchKeyword, 10, abortController.signal);
         
-        const data = await response.json();
-        
-        results = (data.products || []).map((product: any) => {
+        results = products.map((product: any) => {
           const authors = (product.authors || []).map((a: any) => a.name).join(', ');
           const narrators = (product.narrators || []).map((n: any) => n.name).join(', ');
           
-          // Try to get high quality image
           let coverUrl = product.product_images?.['500'] || product.product_images?.['large'];
           if (product.media?.images) {
             coverUrl = product.media.images['500'] || product.media.images['large'] || coverUrl;
@@ -1311,8 +1635,25 @@ async function startServer() {
             metadata_source: `https://www.audible.com/pd/${product.asin}`
           };
         });
+
+        if (requestedAsin) {
+          const exactMatch = results.find(item => item.asin?.toLowerCase() === requestedAsin.toLowerCase());
+          if (exactMatch) {
+            results = [exactMatch];
+          }
+        }
       } else if (source === 'goodreads') {
-        const response = await fetch(`https://www.goodreads.com/book/auto_complete?format=json&q=${encodeURIComponent(q as string)}`, {
+        const isbnMatch = (q as string).match(/^isbn:\s*([a-zA-Z0-9]+)/i);
+        const cleanIsbnValue = isOnlyNumbers ? normalizedQ : (isbnMatch ? isbnMatch[1].replace(/[\s-]/g, '') : null);
+
+        let searchQuery = q as string;
+        if (cleanIsbnValue) {
+          searchQuery = cleanIsbnValue;
+        } else if (isAsin) {
+          searchQuery = trimmedQ;
+        }
+
+        const response = await fetch(`https://www.goodreads.com/book/auto_complete?format=json&q=${encodeURIComponent(searchQuery)}`, {
           signal: abortController.signal
         });
         
@@ -1326,7 +1667,6 @@ async function startServer() {
         const rawResults = data.map((item: any) => {
           let coverUrl = item.imageUrl;
           if (coverUrl) {
-            // Try to get larger image
             coverUrl = coverUrl.replace(/_S[Y|X]\d+_/, '_SY600_');
           }
           
@@ -1348,7 +1688,6 @@ async function startServer() {
           };
         });
 
-        // Fetch extra details for the first 5 results in parallel to keep it fast
         results = await Promise.all(rawResults.slice(0, 5).map(async (res: any) => {
           const details = await fetchGoodreadsDetails(res.bookUrl);
           if (details) {
@@ -1366,9 +1705,25 @@ async function startServer() {
           return res;
         }));
 
-        // Add the rest of the results without extra details
         if (rawResults.length > 5) {
           results = [...results, ...rawResults.slice(5)];
+        }
+
+        if (cleanIsbnValue) {
+          const exactMatch = results.find(item => {
+            const cleanItemIsbn = item.isbn ? item.isbn.replace(/[^0-9X]/ig, '') : '';
+            return cleanItemIsbn === cleanIsbnValue;
+          });
+          if (exactMatch) {
+            results = [exactMatch];
+          }
+        } else if (isAsin) {
+          const exactMatch = results.find(item => {
+            return item.asin?.toLowerCase() === trimmedQ.toLowerCase();
+          });
+          if (exactMatch) {
+            results = [exactMatch];
+          }
         }
       }
 

@@ -10,7 +10,7 @@ interface RefreshMetadataModalProps {
 }
 
 export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onSuccess }: RefreshMetadataModalProps) {
-  const [provider, setProvider] = useState<'google' | 'audible' | 'goodreads' | 'none'>('none');
+  const [provider, setProvider] = useState<'openlibrary' | 'audible' | 'goodreads' | 'none'>('none');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'idle' | 'processing' | 'complete'>('idle');
@@ -131,7 +131,7 @@ export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onS
                   >
                     <div className="text-left">
                       <p className="text-sm font-bold uppercase tracking-widest">Auto-Detect</p>
-                      <p className="text-[10px] opacity-60">Use saved source or fallback to Google Books</p>
+                      <p className="text-[10px] opacity-60">Use saved source or fallback to Open Library</p>
                     </div>
                     {provider === 'none' && <Check size={16} />}
                   </button>
@@ -139,19 +139,19 @@ export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onS
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setProvider('google');
+                      setProvider('openlibrary');
                     }}
                     disabled={loading}
                     className={`
                       p-4 rounded-xl border-2 transition-all flex items-center justify-between
-                      ${provider === 'google' ? 'border-tzeentch-cyan bg-tzeentch-cyan/10 text-tzeentch-cyan' : 'border-tzeentch-cyan/10 bg-tzeentch-card/30 text-tzeentch-text-muted hover:border-tzeentch-cyan/30'}
+                      ${provider === 'openlibrary' ? 'border-tzeentch-cyan bg-tzeentch-cyan/10 text-tzeentch-cyan' : 'border-tzeentch-cyan/10 bg-tzeentch-card/30 text-tzeentch-text-muted hover:border-tzeentch-cyan/30'}
                     `}
                   >
                     <div className="text-left">
-                      <p className="text-sm font-bold uppercase tracking-widest">Google Books</p>
+                      <p className="text-sm font-bold uppercase tracking-widest">Open Library</p>
                       <p className="text-[10px] opacity-60">Best for general books and ISBNs</p>
                     </div>
-                    {provider === 'google' && <Check size={16} />}
+                    {provider === 'openlibrary' && <Check size={16} />}
                   </button>
 
                   <button
