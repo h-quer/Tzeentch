@@ -108,6 +108,73 @@ const ensureValidRating = (rating: any): number | null => {
   return r;
 };
 
+export function formatToIsoDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const str = String(dateStr).trim();
+  if (!str) return null;
+
+  // 1. If it's already YYYY-MM-DD, return it.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+
+  // 2. If it's YYYY-MM, return YYYY-MM-01
+  if (/^\d{4}-\d{2}$/.test(str)) {
+    return `${str}-01`;
+  }
+
+  // 3. If it's just YYYY, return YYYY-01-01
+  if (/^\d{4}$/.test(str)) {
+    return `${str}-01-01`;
+  }
+
+  // 4. Try parsing it with standard Date constructor
+  try {
+    const timestamp = Date.parse(str);
+    if (!isNaN(timestamp)) {
+      const date = new Date(timestamp);
+      const y = date.getFullYear();
+      if (y >= 1000 && y <= 3000) {
+        const localDate = new Date(timestamp);
+        const ly = localDate.getFullYear();
+        const lm = String(localDate.getMonth() + 1).padStart(2, '0');
+        const ld = String(localDate.getDate()).padStart(2, '0');
+        return `${ly}-${lm}-${ld}`;
+      }
+    }
+  } catch (e) {
+    // Ignore and fallback
+  }
+
+  // 5. Regex based fallback for month names
+  const months: Record<string, string> = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+  };
+
+  const monthYearMatch = str.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,]+\b(\d{4})\b/i);
+  if (monthYearMatch) {
+    const mNum = months[monthYearMatch[1].toLowerCase().slice(0, 3)];
+    const year = monthYearMatch[2];
+    return `${year}-${mNum}-01`;
+  }
+
+  const yearMonthMatch = str.match(/\b(\d{4})[\s,]+\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i);
+  if (yearMonthMatch) {
+    const year = yearMonthMatch[1];
+    const mNum = months[yearMonthMatch[2].toLowerCase().slice(0, 3)];
+    return `${year}-${mNum}-01`;
+  }
+
+  // 6. Find any 4-digit number as the year and fallback
+  const yearMatch = str.match(/\b(\d{4})\b/);
+  if (yearMatch) {
+    return `${yearMatch[1]}-01-01`;
+  }
+
+  return null;
+}
+
 // Migration Logic
 const currentSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='books'").get() as { sql: string };
 const needsSchemaMigration = currentSchema && !currentSchema.sql.includes("'Print'");
@@ -276,7 +343,7 @@ if (rowCount.count === 0 && fs.existsSync(csvPath)) {
               narrator: book.narrator || null,
               series: book.series || null,
               series_number: book.series_number?.toString() || null,
-              published_date: book.published_date?.toString() || null,
+              published_date: formatToIsoDate(book.published_date?.toString() || null),
               metadata_source: book.metadata_source || null,
               tags: book.tags || null,
               description: book.description || null,
@@ -336,6 +403,30 @@ try {
   console.log(`Resynced tags for ${allBooks.length} books.`);
 } catch (e) {
   console.error('Failed to resync tags:', e);
+}
+
+// Retroactive published_date normalization
+try {
+  console.log('Retroactively normalizing published dates...');
+  const books = db.prepare('SELECT id, published_date FROM books').all() as { id: number; published_date: string | null }[];
+  const updateStmt = db.prepare('UPDATE books SET published_date = ? WHERE id = ?');
+  db.transaction(() => {
+    let updatedCount = 0;
+    for (const b of books) {
+      if (b.published_date) {
+        const iso = formatToIsoDate(b.published_date);
+        if (iso !== b.published_date) {
+          updateStmt.run(iso, b.id);
+          updatedCount++;
+        }
+      }
+    }
+    if (updatedCount > 0) {
+      console.log(`Normalized published_date to YYYY-MM-DD for ${updatedCount} existing books.`);
+    }
+  })();
+} catch (e) {
+  console.error('Failed to retroactively normalize published dates:', e);
 }
 
 export interface GetBooksOptions {
@@ -483,12 +574,14 @@ export const globalSearch = (query: string, limit: number = 10) => {
         WHEN b.title LIKE ? THEN 100
         WHEN b.title LIKE ? THEN 90
         WHEN b.author LIKE ? THEN 80
+        WHEN b.narrator LIKE ? THEN 75
         WHEN EXISTS (SELECT 1 FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id AND t.name LIKE ?) THEN 70
+        WHEN b.series LIKE ? THEN 65
         WHEN b.description LIKE ? THEN 60
         ELSE 50
       END as rank
     FROM books b
-    WHERE b.title LIKE ? OR b.author LIKE ? OR b.description LIKE ? OR EXISTS (SELECT 1 FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id AND t.name LIKE ?)
+    WHERE b.title LIKE ? OR b.author LIKE ? OR b.narrator LIKE ? OR b.description LIKE ? OR b.series LIKE ? OR EXISTS (SELECT 1 FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id AND t.name LIKE ?)
     ORDER BY rank DESC, b.id DESC
     LIMIT ?
   `;
@@ -498,8 +591,8 @@ export const globalSearch = (query: string, limit: number = 10) => {
   const startLike = `${query}%`;
   
   const rows = db.prepare(sql).all(
-    startLike, likeQuery, likeQuery, likeQuery, likeQuery,
-    likeQuery, likeQuery, likeQuery, likeQuery,
+    startLike, likeQuery, likeQuery, likeQuery, likeQuery, likeQuery, likeQuery,
+    likeQuery, likeQuery, likeQuery, likeQuery, likeQuery, likeQuery,
     limit
   );
   
@@ -518,6 +611,9 @@ export const addBook = (book: Omit<Book, 'id'>) => {
   const normalizedBook = { ...book };
   if ('rating' in normalizedBook) {
     normalizedBook.rating = ensureValidRating(normalizedBook.rating) as any;
+  }
+  if ('published_date' in normalizedBook) {
+    normalizedBook.published_date = formatToIsoDate(normalizedBook.published_date) as any;
   }
   
   const fields = Object.keys(normalizedBook).filter(k => k !== 'id');
@@ -554,7 +650,8 @@ export const addBooks = (newBooks: Omit<Book, 'id'>[]) => {
   
   const normalizedBooks = newBooks.map(book => ({
     ...book,
-    rating: ensureValidRating(book.rating)
+    rating: ensureValidRating(book.rating),
+    published_date: formatToIsoDate(book.published_date) as any
   }));
   
   const addedBooks: Book[] = [];
@@ -587,6 +684,9 @@ export const updateBook = (id: number, updates: Partial<Book>) => {
   if ('rating' in normalizedUpdates) {
     normalizedUpdates.rating = ensureValidRating(normalizedUpdates.rating) as any;
   }
+  if ('published_date' in normalizedUpdates) {
+    normalizedUpdates.published_date = formatToIsoDate(normalizedUpdates.published_date) as any;
+  }
   
   const fields = Object.keys(normalizedUpdates).filter(k => k !== 'id');
   if (fields.length === 0) return false;
@@ -618,6 +718,9 @@ export const updateBooks = (ids: number[], updates: Partial<Book>) => {
   const normalizedUpdates = { ...updates };
   if ('rating' in normalizedUpdates) {
     normalizedUpdates.rating = ensureValidRating(normalizedUpdates.rating) as any;
+  }
+  if ('published_date' in normalizedUpdates) {
+    normalizedUpdates.published_date = formatToIsoDate(normalizedUpdates.published_date) as any;
   }
   
   const fields = Object.keys(normalizedUpdates).filter(k => k !== 'id');
@@ -663,7 +766,8 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
     if (toAdd.length > 0) {
       const normalizedToAdd = toAdd.map(b => ({
         ...b,
-        rating: ensureValidRating(b.rating)
+        rating: ensureValidRating(b.rating),
+        published_date: formatToIsoDate(b.published_date) as any
       }));
       
       const insertStmt = db.prepare(`
@@ -687,6 +791,9 @@ export const bulkSyncBooks = (toAdd: Omit<Book, 'id'>[], toUpdate: {id: number, 
       const normalizedUpdates = { ...item.updates };
       if ('rating' in normalizedUpdates) {
         normalizedUpdates.rating = ensureValidRating(normalizedUpdates.rating) as any;
+      }
+      if ('published_date' in normalizedUpdates) {
+        normalizedUpdates.published_date = formatToIsoDate(normalizedUpdates.published_date) as any;
       }
       
       const fields = Object.keys(normalizedUpdates).filter(k => k !== 'id');
