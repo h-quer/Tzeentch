@@ -120,9 +120,9 @@ export default function ManualRefreshModal({ isOpen, onClose, book, onSuccess }:
       />
       
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="relative bg-tzeentch-bg w-full max-w-2xl rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col max-h-[95dvh] border border-tzeentch-cyan/30 overflow-y-auto"
       >
         {/* Header */}

@@ -71,9 +71,9 @@ export default function RefreshMetadataModal({ isOpen, onClose, selectedIds, onS
       />
       
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="relative bg-tzeentch-bg w-full max-w-md rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[95dvh] border border-tzeentch-cyan/30"
       >
         <div className="px-6 sm:px-8 py-4 sm:py-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/50 backdrop-blur-md">

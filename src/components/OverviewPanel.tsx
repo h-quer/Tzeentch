@@ -76,8 +76,8 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
     >
       {/* Categories - Horizontal Bar Chart */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
         <h3 className="text-[10px] lg:text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/60 mb-2 lg:mb-4">Items by Category</h3>
@@ -88,7 +88,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
                <XAxis type="number" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
                <YAxis dataKey="name" type="category" stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} width={80} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#22d3ee', opacity: 0.1 }} />
-              <Bar dataKey="value" fill="#22d3ee" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="value" fill="#22d3ee" radius={[0, 4, 4, 0]} isAnimationActive={false}>
                 {stats.categoryData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -100,8 +100,8 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
 
       {/* Formats - Pie Chart */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
         className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
@@ -118,6 +118,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
                 paddingAngle={5}
                 dataKey="value"
                 stroke="none"
+                isAnimationActive={false}
               >
                 {stats.formatData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={['#22d3ee', '#c026d3', '#f472b6'][index % 3]} />
@@ -127,7 +128,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
               <Legend 
                 verticalAlign="bottom" 
                 align="center"
-                iconType="circle"
+                 iconType="circle"
                 formatter={(value, entry: any) => (
                   <span className="text-[10px] font-bold text-tzeentch-text-muted uppercase tracking-wider ml-1">
                     {value} ({entry.payload.value})
@@ -141,8 +142,8 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
 
       {/* Top Tags - Vertical Bar Chart */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
         className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
@@ -154,7 +155,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
               <XAxis dataKey="name" stroke="#22d3ee" fontSize={10} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={50} />
               <YAxis stroke="#22d3ee" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#22d3ee', opacity: 0.1 }} />
-              <Bar dataKey="value" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill="#22d3ee" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -162,8 +163,8 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
 
       {/* Finished Reading per Year - Vertical Bar Chart */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
         className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0"
       >
@@ -175,7 +176,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
               <XAxis dataKey="name" stroke="#fbbf24" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="#fbbf24" fontSize={12} tickLine={false} axisLine={false} scale="log" domain={[1, 'auto']} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#fbbf24', opacity: 0.1 }} />
-              <Bar dataKey="value" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill="#fbbf24" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -183,8 +184,8 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
 
       {/* Top Authors - Bar Chart */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
         className="bg-tzeentch-card/30 border border-tzeentch-cyan/10 rounded-2xl p-3 lg:p-5 flex flex-col min-h-[300px] lg:min-h-0 lg:col-span-2"
       >
@@ -196,7 +197,7 @@ export default function OverviewPanel({ viewPreferences }: OverviewPanelProps) {
               <XAxis dataKey="name" stroke="#c026d3" fontSize={10} tickLine={false} axisLine={false} angle={-15} textAnchor="end" height={40} />
               <YAxis stroke="#c026d3" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#c026d3', opacity: 0.1 }} />
-              <Bar dataKey="value" fill="#c026d3" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill="#c026d3" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>

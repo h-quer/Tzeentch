@@ -243,9 +243,9 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
       />
       
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="relative bg-tzeentch-bg w-full max-w-2xl rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[95dvh] border border-tzeentch-cyan/30"
       >
         {/* Header */}
@@ -293,8 +293,8 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
 
               {error && (
                 <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   className="p-4 bg-tzeentch-magenta/10 border border-tzeentch-magenta/30 rounded-xl text-tzeentch-magenta text-xs font-bold uppercase tracking-widest text-center"
                 >
                   {error}
@@ -556,9 +556,9 @@ export default function AddBookModal({ isOpen, onClose, onSuccess, viewPreferenc
                 <AnimatePresence>
                   {isTagDropdownOpen && (availableTags.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !selectedTags.includes(t)).length > 0) && (
                     <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                       className="absolute z-10 w-full mt-2 bg-tzeentch-card border border-tzeentch-cyan/20 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto"
                     >
                       {availableTags

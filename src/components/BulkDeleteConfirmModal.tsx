@@ -35,9 +35,9 @@ export default function BulkDeleteConfirmModal({ isOpen, onClose, onConfirm, cou
           />
           
           <motion.div 
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="relative w-full max-w-md bg-tzeentch-bg border border-tzeentch-magenta/30 rounded-2xl shadow-[0_0_50px_rgba(255,0,128,0.15)] overflow-y-auto max-h-[95dvh]"
           >
             {/* Header */}

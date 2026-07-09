@@ -342,9 +342,9 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
       />
       
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="relative bg-tzeentch-bg w-full max-w-2xl rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[95dvh] border border-tzeentch-cyan/30"
       >
         <div className="p-4 sm:p-6 border-b border-tzeentch-cyan/10 flex justify-between items-center bg-tzeentch-card/30">
@@ -390,19 +390,19 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           <AnimatePresence mode="wait">
             {activeTab === 'list' ? (
-              <motion.div key="list" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+              <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {renderConfigSection('List View Columns', listColumns, setListColumns)}
               </motion.div>
             ) : activeTab === 'card' ? (
-              <motion.div key="card" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <motion.div key="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {renderConfigSection('Card View Fields', cardFields, setCardFields)}
               </motion.div>
             ) : activeTab === 'sort' ? (
-              <motion.div key="sort" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <motion.div key="sort" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {renderSortSection()}
               </motion.div>
             ) : activeTab === 'theme' ? (
-              <motion.div key="theme" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <motion.div key="theme" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="space-y-6">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-tzeentch-cyan/40">Color Scheme</h4>
                   <div className="grid grid-cols-3 gap-4">
@@ -470,7 +470,7 @@ export default function SettingsModal({ config, onSave, onClose, onImportSuccess
                 </div>
               </motion.div>
             ) : (
-              <motion.div key="data" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <motion.div key="data" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="space-y-6">
                   {importSuccessCount !== null ? (
                     <div className="text-center py-6 space-y-4">

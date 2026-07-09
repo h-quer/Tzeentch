@@ -306,9 +306,9 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
       />
       
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 40 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 40 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="relative bg-tzeentch-bg w-full max-w-5xl rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-y-auto flex flex-col md:flex-row max-h-[95dvh] border border-tzeentch-cyan/30"
       >
         {/* Left: Cover & Actions */}
@@ -700,9 +700,9 @@ export default function BookDetailsModal({ book, onClose, onUpdate, viewPreferen
                     <AnimatePresence>
                       {isTagDropdownOpen && (availableTags.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !selectedTags.includes(t)).length > 0) && (
                         <motion.div 
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
                           className="absolute z-50 w-full mt-1 bg-tzeentch-card border border-tzeentch-cyan/30 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden max-h-48 overflow-y-auto backdrop-blur-xl"
                         >
                           {availableTags

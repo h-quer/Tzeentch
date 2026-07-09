@@ -376,9 +376,9 @@ export default function App() {
               <motion.div
                 key="overview"
                 className="h-full"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
                 <OverviewPanel viewPreferences={uiConfig?.viewPreferences} />
               </motion.div>
@@ -386,9 +386,9 @@ export default function App() {
               <motion.div 
                 key={`${activeTab}-${viewType}`}
                 className="h-full flex flex-col min-h-0"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
                 {viewType === 'cards' ? (
                   <div 
@@ -457,9 +457,9 @@ export default function App() {
       <AnimatePresence>
         {isMultiSelectMode && (
           <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed bottom-0 left-0 right-0 z-40 p-4 pointer-events-none"
           >
             <div className="max-w-4xl mx-auto glass-tzeentch border border-tzeentch-cyan/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 shadow-[0_0_30px_rgba(34,211,238,0.2)] pointer-events-auto">

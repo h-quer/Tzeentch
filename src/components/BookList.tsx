@@ -42,9 +42,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({ columnId, label, currentF
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="absolute top-full left-0 mt-2 z-50 bg-tzeentch-bg rounded-xl shadow-[0_0_40px_rgba(34,211,238,0.2)] border border-tzeentch-cyan/30 p-4 min-w-[240px] backdrop-blur-xl text-left"
       onClick={(e) => e.stopPropagation()}
     >
